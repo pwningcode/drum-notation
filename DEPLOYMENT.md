@@ -28,7 +28,11 @@ Value: your-username.github.io
 4. Go to **Settings** → **Actions** → **General**
 5. Under **Workflow permissions**, select **Read and write permissions**
 6. Check **Allow GitHub Actions to create and approve pull requests**
-7. The workflow will automatically deploy when you push to the `main` branch
+7. Go to **Settings** → **Environments** → **New environment**
+8. Name it `github-pages` and click **Configure environment**
+9. Under **Environment protection rules**, leave everything unchecked
+10. Click **Save protection rules**
+11. The workflow will automatically deploy when you push to the `main` branch
 
 ### 3. Custom Domain Setup
 
@@ -79,8 +83,9 @@ export default defineConfig({
 ```
 
 ### GitHub Actions Workflow (`.github/workflows/deploy.yml`)
-- Builds the project using Node.js 18
-- Deploys to GitHub Pages using `peaceiris/actions-gh-pages`
+- Builds the project using Node.js 20.18.0
+- Uses official GitHub Pages deployment actions
+- Separates build and deploy into two jobs for better reliability
 - Configures custom domain `drum.fvcsolutions.com`
 
 ### CNAME File (`public/CNAME`)
