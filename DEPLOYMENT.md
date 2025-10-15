@@ -74,13 +74,15 @@ The following files have been configured for GitHub Pages deployment:
 ```typescript
 export default defineConfig({
   plugins: [react()],
-  base: '/drum-notation/',
+  base: '/',  // Root path for custom domain deployment
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
   },
 })
 ```
+
+**Note**: The `base: '/'` configuration is used for custom domain deployments. If you were deploying to a GitHub Pages subdirectory (like `username.github.io/repo-name`), you would use `base: '/repo-name/'`.
 
 ### GitHub Actions Workflow (`.github/workflows/deploy.yml`)
 - Builds the project using Node.js 20.18.0
