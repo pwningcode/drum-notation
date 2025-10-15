@@ -25,7 +25,10 @@ Value: your-username.github.io
 1. Go to your repository on GitHub
 2. Navigate to **Settings** → **Pages**
 3. Under **Source**, select **GitHub Actions**
-4. The workflow will automatically deploy when you push to the `main` branch
+4. Go to **Settings** → **Actions** → **General**
+5. Under **Workflow permissions**, select **Read and write permissions**
+6. Check **Allow GitHub Actions to create and approve pull requests**
+7. The workflow will automatically deploy when you push to the `main` branch
 
 ### 3. Custom Domain Setup
 
@@ -108,6 +111,13 @@ Contains the custom domain: `drum.fvcsolutions.com`
 - DNS propagation can take up to 24 hours
 - Verify CNAME record points to `your-username.github.io`
 - Check that the custom domain is properly configured in GitHub Pages settings
+
+### GitHub Actions Permission Issues
+If you see errors like "Permission to [repo] denied to github-actions[bot]":
+1. Go to **Settings** → **Actions** → **General**
+2. Under **Workflow permissions**, select **Read and write permissions**
+3. Check **Allow GitHub Actions to create and approve pull requests**
+4. Save the changes and re-run the workflow
 
 ## Local Development
 
