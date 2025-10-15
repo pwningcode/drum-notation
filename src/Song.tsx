@@ -24,9 +24,9 @@ export type Measure = Subdivision[];     // length = beats * 4 (for x/4 time)
 export type Section = Measure[];         // one or more measures
 
 export interface TimeSignature {
-  beats: 2 | 3 | 4;                      // x in x/4 (you asked for 2/4, 3/4, 4/4)
-  division: 4;                           // denominator fixed to 4 for this component
-  subdivisions: 3 | 4;                   // subdivisions per beat (3=triplets, 4=sixteenths)
+  beats: number;                         // x in x/4 (you asked for 2/4, 3/4, 4/4)
+  division: number;                      // denominator fixed to 4 for this component
+  subdivisions?: number;                 // subdivisions per beat (3=triplets, 4=sixteenths)
 }
 
 export interface SongProps {
@@ -375,7 +375,7 @@ export const Song: React.FC<SongProps> = ({
                 value={beats}
                 onChange={(e) => handleTimeSignatureChange({
                   ...timeSig,
-                  beats: parseInt(e.target.value) as 2 | 3 | 4
+                  beats: parseInt(e.target.value)
                 })}
                 className="bg-zinc-700 text-zinc-100 border border-zinc-600 rounded px-2 py-1 text-sm"
               >
@@ -390,7 +390,7 @@ export const Song: React.FC<SongProps> = ({
                 value={subdivisions}
                 onChange={(e) => handleTimeSignatureChange({
                   ...timeSig,
-                  subdivisions: parseInt(e.target.value) as 3 | 4
+                  subdivisions: parseInt(e.target.value)
                 })}
                 className="bg-zinc-700 text-zinc-100 border border-zinc-600 rounded px-2 py-1 text-sm"
               >

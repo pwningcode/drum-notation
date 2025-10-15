@@ -1,7 +1,11 @@
 import defaultSongsData from '../defaultSongs.json';
-import { RootState } from './index';
+import { SongsState } from './songsSlice';
 
 const STORAGE_KEY = 'drum-notation-redux-state';
+
+interface RootState {
+  songs: SongsState;
+}
 
 export const loadState = (): Partial<RootState> => {
   try {
@@ -10,7 +14,7 @@ export const loadState = (): Partial<RootState> => {
       // No saved state, use default data
       return {
         songs: {
-          songs: defaultSongsData.songs,
+          songs: defaultSongsData.songs as any,
           version: defaultSongsData.version,
           activeSongTitle: defaultSongsData.songs[0]?.title || '',
         }
@@ -24,7 +28,7 @@ export const loadState = (): Partial<RootState> => {
       console.log('Updating from newer default data');
       return {
         songs: {
-          songs: defaultSongsData.songs,
+          songs: defaultSongsData.songs as any,
           version: defaultSongsData.version,
           activeSongTitle: defaultSongsData.songs[0]?.title || '',
         }
@@ -37,7 +41,7 @@ export const loadState = (): Partial<RootState> => {
     // Return default data on error
     return {
       songs: {
-        songs: defaultSongsData.songs,
+        songs: defaultSongsData.songs as any,
         version: defaultSongsData.version,
         activeSongTitle: defaultSongsData.songs[0]?.title || '',
       }
