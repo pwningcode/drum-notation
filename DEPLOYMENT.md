@@ -1,18 +1,18 @@
 # GitHub Pages Deployment Guide
 
-This guide will help you deploy your drum notation app to GitHub Pages at `drum.pwningcode.com`.
+This guide will help you deploy your drum notation app to GitHub Pages at `drum.fvcsolutions.com`.
 
 ## Prerequisites
 
 1. A GitHub repository with your code
-2. A custom domain `drum.pwningcode.com` configured in your DNS settings
+2. A custom domain `drum.fvcsolutions.com` configured in your DNS settings
 3. GitHub Pages enabled for your repository
 
 ## Configuration Steps
 
 ### 1. DNS Configuration
 
-Configure your DNS settings to point `drum.pwningcode.com` to GitHub Pages:
+Configure your DNS settings to point `drum.fvcsolutions.com` to GitHub Pages:
 
 ```
 Type: CNAME
@@ -30,7 +30,7 @@ Value: your-username.github.io
 ### 3. Custom Domain Setup
 
 1. In your repository settings, go to **Pages**
-2. Under **Custom domain**, enter `drum.pwningcode.com`
+2. Under **Custom domain**, enter `drum.fvcsolutions.com`
 3. Check **Enforce HTTPS** (recommended)
 
 ## Deployment Methods
@@ -42,7 +42,7 @@ The project is configured with GitHub Actions for automatic deployment:
 - **Trigger**: Pushes to the `main` branch
 - **Workflow**: `.github/workflows/deploy.yml`
 - **Output**: Deploys to `gh-pages` branch
-- **Domain**: `drum.pwningcode.com`
+- **Domain**: `drum.fvcsolutions.com`
 
 ### Manual Deployment
 
@@ -78,10 +78,10 @@ export default defineConfig({
 ### GitHub Actions Workflow (`.github/workflows/deploy.yml`)
 - Builds the project using Node.js 18
 - Deploys to GitHub Pages using `peaceiris/actions-gh-pages`
-- Configures custom domain `drum.pwningcode.com`
+- Configures custom domain `drum.fvcsolutions.com`
 
 ### CNAME File (`public/CNAME`)
-Contains the custom domain: `drum.pwningcode.com`
+Contains the custom domain: `drum.fvcsolutions.com`
 
 ### Package.json Scripts
 ```json
