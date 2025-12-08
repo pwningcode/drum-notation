@@ -1,0 +1,47 @@
+{
+  "id": "1765223309849-ah3tdaidq",
+  "title": "Tiriba",
+  "tempo": 120,
+  "sections": [
+    {
+      "id": "1765223309849-w0dc09jgv",
+      "name": "Intro",
+      "measures": [
+        {
+          "id": "1765223309849-1nhp7izpj",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765223309849-str4v3nrp",
+              "instrument": "djembe",
+              "notes": [
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                "."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "created": "2025-12-08T19:48:29.849Z",
+  "modified": "2025-12-08T19:48:42.820Z"
+}

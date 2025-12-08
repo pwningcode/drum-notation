@@ -1,0 +1,47 @@
+{
+  "id": "1765223217450-7jsk8baks",
+  "title": "KuKu",
+  "tempo": 120,
+  "sections": [
+    {
+      "id": "1765223217450-4v9z0ebb9",
+      "name": "Intro",
+      "measures": [
+        {
+          "id": "1765223217450-2xk7lztsb",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765223217450-whi5rrmwz",
+              "instrument": "djembe",
+              "notes": [
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                "."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "created": "2025-12-08T19:46:57.449Z",
+  "modified": "2025-12-08T19:47:16.730Z"
+}

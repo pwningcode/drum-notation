@@ -1,0 +1,315 @@
+{
+  "id": "1765219638634-kg4jo807u",
+  "title": "Sinte",
+  "tempo": 120,
+  "sections": [
+    {
+      "id": "1765219638634-qqwoo8z06",
+      "name": "Intro",
+      "measures": [
+        {
+          "id": "1765219638634-yjiuyup81",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-ebk67l1pf",
+              "instrument": "djembe",
+              "notes": [
+                "S",
+                "S",
+                ".",
+                "S",
+                "S",
+                ".",
+                "S",
+                ".",
+                "S",
+                "S",
+                ".",
+                "S",
+                "S",
+                ".",
+                ".",
+                "B"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1765219638634-3fk8dhqsz",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-oviozybm8",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                ".",
+                "T",
+                ".",
+                "T",
+                ".",
+                ".",
+                "B",
+                "T",
+                ".",
+                "T",
+                ".",
+                "T",
+                ".",
+                ".",
+                "B"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1765219638634-s98oteb6x",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-49qmd5cbu",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                "T",
+                ".",
+                "B",
+                "T",
+                "T",
+                ".",
+                "B",
+                "T",
+                "T",
+                ".",
+                "B",
+                "T",
+                "T",
+                ".",
+                "."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1765219638634-xllk03vc8",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-h9o1if4to",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T",
+                "T"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1765219638634-1unl2muo3",
+      "name": "Variant 1",
+      "measures": [
+        {
+          "id": "1765219638634-l4ti8hz2x",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-8w8hf1jqj",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                "T",
+                ".",
+                "T",
+                "B",
+                ".",
+                "T",
+                ".",
+                "B",
+                ".",
+                ".",
+                "T",
+                "B",
+                ".",
+                "T",
+                "."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1765219638634-j6n2fwm3a",
+      "name": "Outro",
+      "measures": [
+        {
+          "id": "1765219638634-r4by5u5mn",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-aafflshqb",
+              "instrument": "djembe",
+              "notes": [
+                "S",
+                "S",
+                ".",
+                "S",
+                "S",
+                ".",
+                "S",
+                ".",
+                "S",
+                "S",
+                ".",
+                "S",
+                "S",
+                ".",
+                ".",
+                "B"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1765219638634-vn0zq7ngh",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-56evze9o3",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                ".",
+                "T",
+                ".",
+                "T",
+                ".",
+                ".",
+                "B",
+                "T",
+                ".",
+                "T",
+                ".",
+                "T",
+                ".",
+                ".",
+                "B"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1765219638634-32m6i1otp",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-pmelqqta6",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                "T",
+                ".",
+                "B",
+                "T",
+                "T",
+                ".",
+                "B",
+                "T",
+                "T",
+                ".",
+                "B",
+                "T",
+                "T",
+                ".",
+                "."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1765219638634-k1epb0a04",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "sixteenth"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-alb356t1r",
+              "instrument": "djembe",
+              "notes": [
+                "^",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                "."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "created": "2025-12-08T18:47:18.634Z",
+  "modified": "2025-12-08T18:47:18.634Z"
+}

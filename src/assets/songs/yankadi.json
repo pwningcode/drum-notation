@@ -1,0 +1,195 @@
+{
+  "id": "1765219638634-3nlrnxyp2",
+  "title": "Yankadi",
+  "tempo": 120,
+  "sections": [
+    {
+      "id": "1765219638634-9aqw8g37j",
+      "name": "Intro",
+      "measures": [
+        {
+          "id": "1765219638634-k9mkf0t2f",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "triplet"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-daec2u5au",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                ".",
+                "T",
+                "T",
+                ".",
+                "T",
+                "T",
+                ".",
+                "T",
+                "T",
+                ".",
+                "T"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1765219638634-e2jzpxn92",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "triplet"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-5ithtd2mg",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                ".",
+                ".",
+                "T",
+                "T",
+                "T",
+                "T",
+                ".",
+                "T",
+                ".",
+                "T",
+                "."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1765219638634-39r4eba4a",
+      "name": "Variant 1",
+      "measures": [
+        {
+          "id": "1765219638634-03lw4mnrl",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "triplet"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-hu1z694si",
+              "instrument": "djembe",
+              "notes": [
+                "B",
+                ".",
+                ".",
+                "T",
+                ".",
+                "T",
+                "B",
+                ".",
+                "T",
+                "T",
+                ".",
+                "T"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1765219638634-rdlojnwap",
+      "name": "Outro",
+      "measures": [
+        {
+          "id": "1765219638634-kpqirq3u8",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "triplet"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-2rfzjbqzu",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                ".",
+                "T",
+                "T",
+                ".",
+                "T",
+                "T",
+                ".",
+                "T",
+                "T",
+                ".",
+                "T"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1765219638634-0de1spy9e",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "triplet"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-dz3qg3pto",
+              "instrument": "djembe",
+              "notes": [
+                "T",
+                ".",
+                ".",
+                "T",
+                "T",
+                "T",
+                "T",
+                ".",
+                "T",
+                ".",
+                ".",
+                "."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1765219638634-2rot16v84",
+          "timeSignature": {
+            "beats": 4,
+            "division": 4,
+            "divisionType": "triplet"
+          },
+          "tracks": [
+            {
+              "id": "1765219638634-eogbv3xe4",
+              "instrument": "djembe",
+              "notes": [
+                "^",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                ".",
+                "."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "created": "2025-12-08T18:47:18.634Z",
+  "modified": "2025-12-08T18:47:18.634Z"
+}
