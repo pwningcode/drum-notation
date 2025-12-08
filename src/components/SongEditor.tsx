@@ -417,7 +417,7 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
     position: { x: number; y: number };
   }>({ isOpen: false, noteIndex: -1, position: { x: 0, y: 0 } });
 
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimerRef = useRef<any | null>(null);
   const pressStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleCellClick = (index: number) => {
