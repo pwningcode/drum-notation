@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { SongManagement } from './SongManagement';
 
 interface HelpDialogProps {
   isOpen: boolean;
@@ -336,6 +337,57 @@ const helpSections: HelpSection[] = [
               with measures flowing horizontally. Switch to edit mode to see the single-column layout
               optimized for editing and reordering.
             </p>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'reset-data',
+    title: 'Manage Song Data',
+    content: (
+      <div className="space-y-4">
+        <h3 className="text-xl font-semibold text-zinc-100">Manage Song Data</h3>
+
+        <div className="space-y-4">
+          <div>
+            <p className="text-zinc-300">
+              Check the status of your songs compared to the bundled defaults. Export your custom
+              songs or modified versions for backup, and download default versions if you want to
+              restore any songs to their original state.
+            </p>
+          </div>
+
+          <SongManagement />
+
+          <div className="border-t border-zinc-700 pt-4 mt-6">
+            <h4 className="text-lg font-semibold text-zinc-100 mb-3">Reset All Data</h4>
+            <p className="text-zinc-300 mb-4">
+              If you need to start completely fresh, you can reset all song data. This will clear
+              your browser's storage and reload the application with the original bundled songs.
+            </p>
+
+            <div className="bg-red-900/20 border border-red-700 rounded p-4 mb-4">
+              <h5 className="font-semibold text-red-300 mb-2">Warning</h5>
+              <p className="text-red-200 text-sm mb-2">
+                This action will permanently delete all songs stored in your browser. Make sure to
+                export any songs you want to keep before resetting!
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                if (window.confirm(
+                  'Are you sure you want to reset all song data? This will delete all your songs and cannot be undone.\n\nMake sure you have exported any songs you want to keep!'
+                )) {
+                  localStorage.clear();
+                  window.location.reload();
+                }
+              }}
+              className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg transition-colors"
+            >
+              Reset All Song Data
+            </button>
           </div>
         </div>
       </div>
