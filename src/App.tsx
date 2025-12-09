@@ -11,9 +11,23 @@ export const App = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const activeSong = songs.find((song) => song.id === activeSongId)
+
+  // Check if this is the user's first visit
+  useEffect(() => {
+    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome')
+    if (!hasSeenWelcome) {
+      setShowWelcomeDialog(true)
+    }
+  }, [])
+
+  const handleCloseWelcome = () => {
+    localStorage.setItem('hasSeenWelcome', 'true')
+    setShowWelcomeDialog(false)
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -113,16 +127,16 @@ export const App = () => {
 
               {/* Song Selector */}
               {!isEditing && (
-                <div className="relative flex-1 sm:flex-initial min-w-0" ref={dropdownRef}>
+                <div className="relative flex-1 sm:flex-initial min-w-0 mr-1" ref={dropdownRef}>
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="px-2 sm:px-4 py-2 bg-zinc-900 border border-zinc-600 rounded-md flex items-center gap-1 sm:gap-2 w-full sm:w-64 hover:bg-zinc-700"
+                    className="px-2 sm:px-4 py-2 bg-zinc-900 border border-zinc-600 rounded-md flex items-center justify-between w-full sm:w-64 hover:bg-zinc-700"
                   >
                     <span className="text-zinc-100 font-medium truncate text-sm sm:text-base">
                       {activeSong ? activeSong.title : 'Select a song'}
                     </span>
                     <svg
-                      className={`w-4 h-4 text-zinc-400 transition-transform flex-shrink-0 ${isDropdownOpen ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-zinc-400 transition-transform flex-shrink-0 ml-1 ${isDropdownOpen ? 'rotate-180' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -187,7 +201,6 @@ export const App = () => {
                         </svg>
                       </button>
 
-                      <div className="hidden sm:block h-8 w-px bg-zinc-600" />
                     </>
                   )}
 
@@ -209,7 +222,7 @@ export const App = () => {
 
                   <button
                     onClick={toggleEditMode}
-                    className={`p-2 rounded-md flex items-center font-medium ${
+                    className={`p-2 rounded-md flex items-center font-medium mr-1 ${
                       isEditing
                         ? 'bg-blue-600 hover:bg-blue-500 text-white border border-blue-500'
                         : 'bg-zinc-900 border border-zinc-600 hover:bg-zinc-700 text-zinc-300'
@@ -248,6 +261,36 @@ export const App = () => {
           </div>
         </div>
       </div>
+
+      {/* Welcome Dialog */}
+      {showWelcomeDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4">
+          <div className="max-w-lg text-center space-y-6">
+            <div className="space-y-4">
+              <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100">
+                Welcome to ACAI Drum Notation
+              </h2>
+              <div className="space-y-3 text-base sm:text-lg text-zinc-300">
+                <p>
+                  Your song edits are stored in your browser's local storage.
+                </p>
+                <p className="text-yellow-400 font-medium">
+                  ⚠️ This data can be lost if you clear your browser data or use a different device.
+                </p>
+                <p>
+                  Please use the <span className="font-semibold text-blue-400">Export</span> button to save your songs as files, and <span className="font-semibold text-blue-400">Import</span> to restore them.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleCloseWelcome}
+              className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white text-lg font-semibold rounded-lg transition-colors"
+            >
+              Got It
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Help Dialog */}
       <HelpDialog isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />

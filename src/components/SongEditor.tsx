@@ -145,7 +145,6 @@ interface NotePickerDialogProps {
   currentNote: Note;
   instrument: InstrumentType;
   onSelectNote: (note: Note) => void;
-  position: { x: number; y: number };
 }
 
 const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
@@ -154,7 +153,6 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
   currentNote,
   instrument,
   onSelectNote,
-  position,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -226,17 +224,12 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       style={{ pointerEvents: 'auto' }}
     >
       <div
         ref={dialogRef}
-        className="bg-zinc-800 rounded-lg border border-zinc-600 shadow-xl p-4 min-w-[320px] max-w-md"
-        style={{
-          position: 'absolute',
-          left: Math.min(position.x, window.innerWidth - 350),
-          top: Math.min(position.y, window.innerHeight - 400),
-        }}
+        className="bg-zinc-800 rounded-lg border border-zinc-600 shadow-xl p-4 min-w-[320px] max-w-md max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-zinc-200">Select Note</h3>
@@ -556,7 +549,7 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
                       onTouchStart={(e) => handleTouchStart(globalIdx, e)}
                       onTouchEnd={() => handleTouchEnd(globalIdx)}
                       className={[
-                        'h-8 w-7 sm:w-10 flex items-center justify-center text-xs sm:text-sm font-semibold',
+                        'h-8 w-6 sm:w-10 flex items-center justify-center text-xs sm:text-sm font-semibold',
                         'border-r border-b border-zinc-600',
                         editable ? 'cursor-pointer hover:bg-zinc-700/60' : '',
                         getColorClass(note, track.instrument),
@@ -589,7 +582,6 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
           currentNote={track.notes[notePickerState.noteIndex]}
           instrument={track.instrument}
           onSelectNote={handleNoteSelect}
-          position={notePickerState.position}
         />
       )}
     </>
@@ -842,7 +834,7 @@ const MeasureView: React.FC<MeasureViewProps> = ({
               <div
                 key={`${beatIdx}-${subIdx}`}
                 className={[
-                  'h-5 sm:h-6 w-7 sm:w-10 flex items-center justify-center text-[10px] sm:text-xs',
+                  'h-5 sm:h-6 w-6 sm:w-10 flex items-center justify-center text-[10px] sm:text-xs',
                   'border-r border-zinc-600',
                   lbl === '1' ? 'font-bold text-zinc-300' : 'text-zinc-500',
                 ].join(' ')}

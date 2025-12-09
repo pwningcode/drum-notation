@@ -371,11 +371,11 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div className="relative w-full h-full max-w-6xl max-h-screen m-4 bg-zinc-900 rounded-lg shadow-2xl flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4">
+      <div className="relative w-full h-full max-w-6xl max-h-screen bg-zinc-900 sm:rounded-lg shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-700">
-          <h2 className="text-2xl font-bold text-zinc-100">How to Use Drum Notation</h2>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-700">
+          <h2 className="text-lg sm:text-2xl font-bold text-zinc-100">How to Use Drum Notation</h2>
           <button
             onClick={onClose}
             className="text-zinc-400 hover:text-zinc-200 text-2xl w-8 h-8 flex items-center justify-center"
