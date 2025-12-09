@@ -525,15 +525,15 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
   return (
     <>
       <div className="border-t border-zinc-600 first:border-t-0">
-        <div className="flex items-center justify-between px-2 py-1 bg-zinc-800/30">
-          <span className="text-xs text-zinc-400">
+        <div className="flex items-center justify-between px-1.5 sm:px-2 py-0.5 sm:py-1 bg-zinc-800/30">
+          <span className="text-[10px] sm:text-xs text-zinc-400 truncate">
             {getInstrumentName(track.instrument)}
             {track.label && ` - ${track.label}`}
           </span>
           {editable && canRemove && (
             <button
               onClick={handleRemoveTrack}
-              className="text-red-400 hover:text-red-300 text-sm"
+              className="text-red-400 hover:text-red-300 text-xs sm:text-sm flex-shrink-0 ml-1"
               title="Remove track"
             >
               ×
@@ -556,7 +556,7 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
                       onTouchStart={(e) => handleTouchStart(globalIdx, e)}
                       onTouchEnd={() => handleTouchEnd(globalIdx)}
                       className={[
-                        'h-8 w-10 flex items-center justify-center text-sm font-semibold',
+                        'h-8 w-7 sm:w-10 flex items-center justify-center text-xs sm:text-sm font-semibold',
                         'border-r border-b border-zinc-600',
                         editable ? 'cursor-pointer hover:bg-zinc-700/60' : '',
                         getColorClass(note, track.instrument),
@@ -751,29 +751,29 @@ const MeasureView: React.FC<MeasureViewProps> = ({
       }`}
     >
       {/* Measure Header */}
-      <div className="px-3 py-2 bg-zinc-800/50 flex items-center justify-between border-b border-zinc-700 whitespace-nowrap">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-zinc-300">
-            Measure {measureIndex + 1}
+      <div className="px-2 sm:px-3 py-1.5 sm:py-2 bg-zinc-800/50 flex items-center justify-between border-b border-zinc-700 whitespace-nowrap">
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          <span className="text-[10px] sm:text-xs font-semibold text-zinc-300">
+            M{measureIndex + 1}
           </span>
           {editable ? (
             <button
               onClick={() => setShowTimeSignature(!showTimeSignature)}
-              className="text-xs text-zinc-400 hover:text-zinc-300 px-2 py-1 rounded border border-zinc-600 hover:border-zinc-500"
+              className="text-[10px] sm:text-xs text-zinc-400 hover:text-zinc-300 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-zinc-600 hover:border-zinc-500"
             >
-              {beats}/4 · {measure.timeSignature.divisionType}
+              {beats}/4 · {measure.timeSignature.divisionType === 'sixteenth' ? '16' : measure.timeSignature.divisionType === 'triplet' ? '3' : measure.timeSignature.divisionType}
             </button>
           ) : (
-            <span className="text-xs text-zinc-500">
-              {beats}/4 · {measure.timeSignature.divisionType}
+            <span className="text-[10px] sm:text-xs text-zinc-500">
+              {beats}/4 · {measure.timeSignature.divisionType === 'sixteenth' ? '16' : measure.timeSignature.divisionType === 'triplet' ? '3' : measure.timeSignature.divisionType}
             </span>
           )}
         </div>
         {editable && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={handleDuplicateMeasure}
-              className="text-blue-400 hover:text-blue-300 text-sm font-medium px-2 py-1 rounded border border-blue-600/30 hover:border-blue-500/50"
+              className="text-blue-400 hover:text-blue-300 text-xs sm:text-sm font-medium px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-blue-600/30 hover:border-blue-500/50"
               title="Duplicate measure"
             >
               ⎘
@@ -781,7 +781,7 @@ const MeasureView: React.FC<MeasureViewProps> = ({
             {canRemove && (
               <button
                 onClick={handleRemoveMeasure}
-                className="text-red-400 hover:text-red-300 text-lg font-bold"
+                className="text-red-400 hover:text-red-300 text-base sm:text-lg font-bold"
                 title="Remove measure"
               >
                 ×
@@ -842,7 +842,7 @@ const MeasureView: React.FC<MeasureViewProps> = ({
               <div
                 key={`${beatIdx}-${subIdx}`}
                 className={[
-                  'h-6 w-10 flex items-center justify-center text-xs',
+                  'h-5 sm:h-6 w-7 sm:w-10 flex items-center justify-center text-[10px] sm:text-xs',
                   'border-r border-zinc-600',
                   lbl === '1' ? 'font-bold text-zinc-300' : 'text-zinc-500',
                 ].join(' ')}
@@ -995,10 +995,10 @@ const SectionView: React.FC<SectionViewProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Section Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {editable && isEditingName ? (
             <input
               type="text"
@@ -1017,7 +1017,7 @@ const SectionView: React.FC<SectionViewProps> = ({
             />
           ) : (
             <h3
-              className={`text-sm font-semibold text-zinc-300 ${
+              className={`text-xs sm:text-sm font-semibold text-zinc-300 ${
                 editable ? 'cursor-pointer hover:text-zinc-100' : ''
               }`}
               onClick={() => editable && setIsEditingName(true)}
@@ -1089,54 +1089,56 @@ const SectionView: React.FC<SectionViewProps> = ({
       </div>
 
       {/* Measures Grid */}
-      <div className={editable ? 'space-y-2' : 'flex flex-wrap gap-4'}>
-        {section.measures.map((measure, idx) => (
-          <React.Fragment key={measure.id}>
-            {/* Drop zone before each measure (only in edit mode) */}
-            {editable && (
-              <DropZone
+      <div className={editable ? 'space-y-2' : 'space-y-3 sm:space-y-0'}>
+        <div className={editable ? '' : 'flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4'}>
+          {section.measures.map((measure, idx) => (
+            <React.Fragment key={measure.id}>
+              {/* Drop zone before each measure (only in edit mode) */}
+              {editable && (
+                <DropZone
+                  sectionId={section.id}
+                  targetIndex={idx}
+                  editable={editable}
+                />
+              )}
+              <MeasureView
+                measure={measure}
                 sectionId={section.id}
-                targetIndex={idx}
+                songId={songId}
+                measureIndex={idx}
                 editable={editable}
+                canRemove={section.measures.length > 1}
               />
-            )}
-            <MeasureView
-              measure={measure}
+            </React.Fragment>
+          ))}
+
+          {/* Drop zone after all measures (only in edit mode) */}
+          {editable && (
+            <DropZone
               sectionId={section.id}
-              songId={songId}
-              measureIndex={idx}
+              targetIndex={section.measures.length}
               editable={editable}
-              canRemove={section.measures.length > 1}
             />
-          </React.Fragment>
-        ))}
+          )}
 
-        {/* Drop zone after all measures (only in edit mode) */}
-        {editable && (
-          <DropZone
-            sectionId={section.id}
-            targetIndex={section.measures.length}
-            editable={editable}
-          />
-        )}
-
-        {/* Add Measure Button */}
-        {editable && (
-          <div className="mt-4 min-w-fit">
-            <button
-              onClick={handleAddMeasure}
-              className="text-xs text-zinc-500 hover:text-zinc-400 px-2 py-1 border border-dashed border-zinc-600 rounded"
-              title="Add measure"
-            >
-              + Add Measure
-            </button>
-          </div>
-        )}
+          {/* Add Measure Button */}
+          {editable && (
+            <div className="mt-4 min-w-fit">
+              <button
+                onClick={handleAddMeasure}
+                className="text-xs text-zinc-500 hover:text-zinc-400 px-2 py-1 border border-dashed border-zinc-600 rounded"
+                title="Add measure"
+              >
+                + Add Measure
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Variants (if any) */}
       {section.variants && section.variants.length > 0 && (
-        <div className="ml-8 space-y-4 border-l-2 border-zinc-700 pl-4">
+        <div className="ml-4 sm:ml-8 space-y-3 sm:space-y-4 border-l-2 border-zinc-700 pl-2 sm:pl-4">
           {section.variants.map((variant) => (
             <SectionView
               key={variant.id}
@@ -1283,7 +1285,7 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
   };
 
   return (
-    <div className="space-y-6 text-zinc-100">
+    <div className="space-y-4 sm:space-y-6 text-zinc-100">
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="flex-1">
@@ -1301,11 +1303,11 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
                 }
               }}
               autoFocus
-              className="text-2xl font-bold bg-zinc-800 text-zinc-100 px-3 py-1 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none"
+              className="text-xl sm:text-2xl font-bold bg-zinc-800 text-zinc-100 px-2 sm:px-3 py-1 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none w-full"
             />
           ) : (
             <h2
-              className={`text-2xl font-bold text-zinc-100 ${
+              className={`text-xl sm:text-2xl font-bold text-zinc-100 ${
                 isEditing ? 'cursor-pointer hover:text-blue-400' : ''
               }`}
               onClick={() => isEditing && setIsEditingTitle(true)}
@@ -1315,8 +1317,8 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
           )}
 
           {isEditing && isEditingTempo ? (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm text-zinc-500">♩ =</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-1">
+              <span className="text-xs sm:text-sm text-zinc-500">♩ =</span>
               <input
                 type="number"
                 value={tempTempo}
@@ -1333,13 +1335,13 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
                 min="1"
                 max="300"
                 autoFocus
-                className="w-20 text-sm bg-zinc-800 text-zinc-100 px-2 py-1 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none"
+                className="w-16 sm:w-20 text-xs sm:text-sm bg-zinc-800 text-zinc-100 px-2 py-1 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none"
               />
-              <span className="text-sm text-zinc-500">BPM</span>
+              <span className="text-xs sm:text-sm text-zinc-500">BPM</span>
             </div>
           ) : (
             <p
-              className={`text-sm text-zinc-500 ${
+              className={`text-xs sm:text-sm text-zinc-500 ${
                 isEditing ? 'cursor-pointer hover:text-zinc-400' : ''
               }`}
               onClick={() => isEditing && setIsEditingTempo(true)}
@@ -1364,17 +1366,17 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
                 placeholder="Add a description..."
                 rows={3}
                 autoFocus
-                className="w-full text-sm bg-zinc-800 text-zinc-100 px-3 py-2 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none resize-none"
+                className="w-full text-xs sm:text-sm bg-zinc-800 text-zinc-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none resize-none"
               />
             </div>
           ) : (
             <>
               {song.description && !isEditing ? (
-                <p className="text-sm text-zinc-400 mt-2">{song.description}</p>
+                <p className="text-xs sm:text-sm text-zinc-400 mt-2">{song.description}</p>
               ) : isEditing ? (
                 <button
                   onClick={() => setIsEditingDescription(true)}
-                  className="mt-2 text-xs text-zinc-500 hover:text-zinc-400 px-2 py-1 border border-dashed border-zinc-600 rounded"
+                  className="mt-2 text-[10px] sm:text-xs text-zinc-500 hover:text-zinc-400 px-1.5 sm:px-2 py-0.5 sm:py-1 border border-dashed border-zinc-600 rounded"
                 >
                   {song.description ? 'Edit description' : '+ Add description or lyrics'}
                 </button>
@@ -1385,7 +1387,7 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
       </header>
 
       {/* Sections */}
-      <div className={isEditing ? 'space-y-4' : 'space-y-8'}>
+      <div className={isEditing ? 'space-y-3 sm:space-y-4' : 'space-y-6 sm:space-y-8'}>
         {song.sections.map((section, idx) => (
           <React.Fragment key={section.id}>
             {/* Section Drop Zone / Add Button (only in edit mode) */}

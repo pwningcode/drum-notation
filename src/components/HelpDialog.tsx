@@ -387,8 +387,8 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
 
         {/* Content */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Left Navigation */}
-          <nav className="w-64 border-r border-zinc-700 overflow-y-auto">
+          {/* Left Navigation - Hidden on mobile */}
+          <nav className="hidden sm:block w-64 border-r border-zinc-700 overflow-y-auto">
             <ul className="py-4">
               {helpSections.map((section) => (
                 <li key={section.id}>
@@ -408,7 +408,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
           </nav>
 
           {/* Main Content */}
-          <div ref={contentRef} className="flex-1 overflow-y-auto px-8 py-6">
+          <div ref={contentRef} className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
             <div className="max-w-3xl space-y-12">
               {helpSections.map((section) => (
                 <div
