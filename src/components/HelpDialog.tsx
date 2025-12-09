@@ -275,7 +275,7 @@ const helpSections: HelpSection[] = [
                 <li><strong>B</strong> - Bass (low tone, center of drum)</li>
                 <li><strong>T</strong> - Tone (open tone, edge of drum)</li>
                 <li><strong>S</strong> - Slap (sharp, high-pitched stroke)</li>
-                <li><strong>^</strong> - Accent (emphasize the previous stroke)</li>
+                <li><strong>^</strong> - Accent (muted slap)</li>
               </ul>
             </div>
           </div>
@@ -286,7 +286,7 @@ const helpSections: HelpSection[] = [
               <ul className="space-y-1 text-zinc-300">
                 <li><strong>. (dot)</strong> - Rest / no stroke</li>
                 <li><strong>O</strong> - Open (let drum ring)</li>
-                <li><strong>M</strong> - Muted (dampen with hand)</li>
+                <li><strong>M</strong> - Muted (dampen with drum stick)</li>
               </ul>
             </div>
           </div>

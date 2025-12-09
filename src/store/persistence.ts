@@ -10,6 +10,7 @@ import { Song, LegacySongData } from '../types';
 import { validateSong, isLegacyFormat, migrateLegacySongs } from '../migration';
 
 const STORAGE_KEY = 'drum-notation-redux-state';
+const CURRENT_VERSION = '2.1.0';
 
 interface RootState {
   songs: SongsState;
@@ -28,7 +29,7 @@ export const loadState = (): Partial<RootState> => {
       return {
         songs: {
           songs: defaultSongs,
-          version: '2.0.0',
+          version: CURRENT_VERSION,
           activeSongId: defaultSongs[0]?.id || '',
         }
       };
@@ -46,7 +47,7 @@ export const loadState = (): Partial<RootState> => {
         return {
           songs: {
             songs: migratedSongs,
-            version: '2.0.0',
+            version: CURRENT_VERSION,
             activeSongId: migratedSongs[0]?.id || '',
           }
         };
@@ -58,14 +59,28 @@ export const loadState = (): Partial<RootState> => {
       const validSongs = parsedState.songs.songs.filter((song: any) => validateSong(song));
 
       if (validSongs.length === parsedState.songs.songs.length) {
-        // All songs are valid, return as-is
+        // Check if version has changed - if so, merge with bundled songs
+        const savedVersion = parsedState.songs.version || '2.0.0';
+        if (savedVersion !== CURRENT_VERSION) {
+          console.log(`Version changed from ${savedVersion} to ${CURRENT_VERSION}, merging bundled songs`);
+          const mergedSongs = mergeSongsWithDefaults(validSongs, defaultSongs);
+          return {
+            songs: {
+              songs: mergedSongs,
+              version: CURRENT_VERSION,
+              activeSongId: parsedState.songs.activeSongId || mergedSongs[0]?.id || '',
+            }
+          };
+        }
+
+        // All songs are valid and version matches, return as-is
         return parsedState;
       } else {
         console.warn('Some songs failed validation, using default songs');
         return {
           songs: {
             songs: defaultSongs,
-            version: '2.0.0',
+            version: CURRENT_VERSION,
             activeSongId: defaultSongs[0]?.id || '',
           }
         };
@@ -77,7 +92,7 @@ export const loadState = (): Partial<RootState> => {
     return {
       songs: {
         songs: defaultSongs,
-        version: '2.0.0',
+        version: CURRENT_VERSION,
         activeSongId: defaultSongs[0]?.id || '',
       }
     };
@@ -88,7 +103,7 @@ export const loadState = (): Partial<RootState> => {
     return {
       songs: {
         songs: defaultSongs,
-        version: '2.0.0',
+        version: CURRENT_VERSION,
         activeSongId: defaultSongs[0]?.id || '',
       }
     };
@@ -103,6 +118,18 @@ export const saveState = (state: RootState): void => {
     console.error('Error saving state to localStorage:', error);
   }
 };
+
+/**
+ * Merges user's saved songs with bundled default songs.
+ * This ensures new bundled songs are available while preserving user modifications.
+ * Strategy: Overwrite with all bundled songs (user said it's OK to overwrite for now)
+ */
+function mergeSongsWithDefaults(savedSongs: Song[], defaultSongs: Song[]): Song[] {
+  // For now, as per user request: "we can just overwrite what the user has in the browser"
+  // This means when new songs are added, we replace everything with the bundled songs
+  console.log(`Replacing ${savedSongs.length} saved songs with ${defaultSongs.length} bundled songs`);
+  return defaultSongs;
+}
 
 function loadDefaultSongs(): Song[] {
   try {
