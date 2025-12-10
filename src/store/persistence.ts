@@ -59,11 +59,17 @@ export const loadState = (): Partial<RootState> => {
       const validSongs = parsedState.songs.songs.filter((song: any) => validateSong(song));
 
       if (validSongs.length === parsedState.songs.songs.length) {
+        // Add displayOrder to songs that don't have it
+        const songsWithOrder = validSongs.map((song: any, index: number) => ({
+          ...song,
+          displayOrder: song.displayOrder ?? index
+        }));
+
         // Check if version has changed - if so, merge with bundled songs
         const savedVersion = parsedState.songs.version || '2.0.0';
         if (savedVersion !== CURRENT_VERSION) {
           console.log(`Version changed from ${savedVersion} to ${CURRENT_VERSION}, merging bundled songs`);
-          const mergedSongs = mergeSongsWithDefaults(validSongs, defaultSongs);
+          const mergedSongs = mergeSongsWithDefaults(songsWithOrder, defaultSongs);
           return {
             songs: {
               songs: mergedSongs,
@@ -73,8 +79,14 @@ export const loadState = (): Partial<RootState> => {
           };
         }
 
-        // All songs are valid and version matches, return as-is
-        return parsedState;
+        // All songs are valid and version matches, return with displayOrder
+        return {
+          songs: {
+            songs: songsWithOrder,
+            version: parsedState.songs.version,
+            activeSongId: parsedState.songs.activeSongId
+          }
+        };
       } else {
         console.warn('Some songs failed validation, using default songs');
         return {
@@ -131,7 +143,7 @@ function mergeSongsWithDefaults(savedSongs: Song[], defaultSongs: Song[]): Song[
   return defaultSongs;
 }
 
-function loadDefaultSongs(): Song[] {
+export function loadDefaultSongs(): Song[] {
   try {
     const songs = [
       kassaSong,
@@ -153,11 +165,19 @@ function loadDefaultSongs(): Song[] {
     const validSongs = songs.filter(validateSong);
 
     if (validSongs.length === songs.length) {
-      return validSongs as Song[];
+      // Add displayOrder to songs that don't have it
+      return (validSongs as Song[]).map((song, index) => ({
+        ...song,
+        displayOrder: song.displayOrder ?? index
+      }));
     } else {
       console.warn('Some default songs failed validation');
       // Return only valid songs, or create a default if none are valid
-      return validSongs.length > 0 ? validSongs as Song[] : [createDefaultSong()];
+      const songsToReturn = validSongs.length > 0 ? validSongs as Song[] : [createDefaultSong()];
+      return songsToReturn.map((song, index) => ({
+        ...song,
+        displayOrder: song.displayOrder ?? index
+      }));
     }
   } catch (error) {
     console.error('Error loading default songs:', error);
@@ -171,6 +191,7 @@ function createDefaultSong(): Song {
     id: `${Date.now()}-default`,
     title: 'New Song',
     tempo: 120,
+    displayOrder: 0,
     sections: [{
       id: `${Date.now()}-intro`,
       name: 'Intro',

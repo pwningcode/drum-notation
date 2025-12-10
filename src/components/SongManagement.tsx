@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useMemo, useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { Song } from '../types';
+import { resetToDefaults, reorderSongs } from '../store/songsSlice';
 import kassaSong from '../assets/songs/kassa.json';
 import sofaSong from '../assets/songs/sofa.json';
 import sinteSong from '../assets/songs/sinte.json';
@@ -18,7 +19,9 @@ interface SongComparisonResult {
 }
 
 export const SongManagement: React.FC = () => {
+  const dispatch = useDispatch();
   const userSongs = useSelector((state: RootState) => state.songs.songs);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const defaultSongs: Song[] = useMemo(() => {
     return [
@@ -32,61 +35,48 @@ export const SongManagement: React.FC = () => {
     ] as Song[];
   }, []);
 
-  // Compare songs and categorize them
+  // Sort songs by displayOrder
+  const sortedUserSongs = useMemo(() => {
+    return [...userSongs].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+  }, [userSongs]);
+
+  // Compare songs and categorize them - preserve user's custom order
   const songComparison = useMemo((): SongComparisonResult[] => {
-    const results: SongComparisonResult[] = [];
-    const processedTitles = new Set<string>();
+    // Build results based on user's song order
+    return sortedUserSongs.map(userSong => {
+      const defaultSong = defaultSongs.find(s => s.title === userSong.title);
 
-    // Check each default song
-    defaultSongs.forEach(defaultSong => {
-      const userSong = userSongs.find(s => s.title === defaultSong.title);
-      processedTitles.add(defaultSong.title);
-
-      if (!userSong) {
-        // Default song exists but user doesn't have it (shouldn't happen normally)
-        results.push({
-          title: defaultSong.title,
-          userSong: null,
-          defaultSong,
-          status: 'has-updates'
-        });
-      } else {
-        // Compare modified dates and content
-        const isModified = userSong.modified !== defaultSong.modified ||
-                          !aresongsEqual(userSong, defaultSong);
-
-        if (isModified) {
-          results.push({
-            title: defaultSong.title,
-            userSong,
-            defaultSong,
-            status: 'modified'
-          });
-        } else {
-          results.push({
-            title: defaultSong.title,
-            userSong,
-            defaultSong,
-            status: 'up-to-date'
-          });
-        }
-      }
-    });
-
-    // Check for custom songs (not in defaults)
-    userSongs.forEach(userSong => {
-      if (!processedTitles.has(userSong.title)) {
-        results.push({
+      if (!defaultSong) {
+        // Custom song (not in defaults)
+        return {
           title: userSong.title,
           userSong,
           defaultSong: null,
-          status: 'custom'
-        });
+          status: 'custom' as const
+        };
+      }
+
+      // Compare modified dates and content
+      const isModified = userSong.modified !== defaultSong.modified ||
+                        !aresongsEqual(userSong, defaultSong);
+
+      if (isModified) {
+        return {
+          title: defaultSong.title,
+          userSong,
+          defaultSong,
+          status: 'modified' as const
+        };
+      } else {
+        return {
+          title: defaultSong.title,
+          userSong,
+          defaultSong,
+          status: 'up-to-date' as const
+        };
       }
     });
-
-    return results;
-  }, [userSongs, defaultSongs]);
+  }, [sortedUserSongs, defaultSongs]);
 
   const handleRestoreDefault = (song: SongComparisonResult) => {
     if (song.defaultSong) {
@@ -116,8 +106,67 @@ export const SongManagement: React.FC = () => {
   const modifiedCount = songComparison.filter(s => s.status === 'modified').length;
   const customCount = songComparison.filter(s => s.status === 'custom').length;
 
+  const handleResetToDefaults = () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to reset all songs to their default configurations?\n\n' +
+      'This will:\n' +
+      '• Delete all custom songs\n' +
+      '• Reset all modified songs to their original state\n' +
+      '• Restore the original 7 default songs\n\n' +
+      'This action cannot be undone!'
+    );
+
+    if (confirmed) {
+      dispatch(resetToDefaults());
+    }
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const reordered = [...songComparison];
+    const [removed] = reordered.splice(draggedIndex, 1);
+    reordered.splice(dropIndex, 0, removed);
+
+    // Extract just the Song objects with updated order
+    const reorderedSongs = reordered.map((item, index) => ({
+      ...item.userSong!,
+      displayOrder: index
+    })).filter(s => s !== null);
+
+    dispatch(reorderSongs(reorderedSongs));
+    setDraggedIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   return (
     <div className="space-y-4">
+      {/* Reset to Defaults Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleResetToDefaults}
+          className="px-3 py-1.5 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-700 rounded"
+          title="Reset all songs to factory defaults"
+        >
+          Reset to Defaults
+        </button>
+      </div>
+
       {/* Summary */}
       <div className="bg-zinc-800/50 border border-zinc-700 rounded p-4">
         <h4 className="font-semibold text-zinc-200 mb-2">Summary</h4>
@@ -139,14 +188,22 @@ export const SongManagement: React.FC = () => {
 
       {/* Song List */}
       <div className="space-y-2">
-        {songComparison.map((song) => (
+        {songComparison.map((song, index) => (
           <div
             key={song.title}
-            className="bg-zinc-800/30 border border-zinc-700 rounded p-4 hover:bg-zinc-800/50 transition-colors"
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, index)}
+            onDragEnd={handleDragEnd}
+            className={`bg-zinc-800/30 border border-zinc-700 rounded p-4 hover:bg-zinc-800/50 transition-colors cursor-move ${
+              draggedIndex === index ? 'opacity-50' : ''
+            }`}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
+                  <span className="text-zinc-500 cursor-grab" title="Drag to reorder">⋮⋮</span>
                   <h5 className="font-semibold text-zinc-100">{song.title}</h5>
                   <StatusBadge status={song.status} />
                 </div>

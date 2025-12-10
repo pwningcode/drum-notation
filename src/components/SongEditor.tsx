@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useAppDispatch } from "../store/hooks";
+import { useAppDispatch, useAppSelector } from "../store";
+import { LinkEditor } from "./LinkEditor";
 import {
   Song,
   Section,
   Measure,
   InstrumentTrack,
   Note,
-  InstrumentType,
+  InstrumentConfig,
   DjembeNote,
-  DunDunNote,
   FlamType,
+  Feel,
   getSubdivisionsPerBeat,
   isFlam,
   formatFlam,
@@ -27,6 +28,7 @@ import {
   removeTrack,
   updateTrackNotes,
   updateMeasureTimeSignature,
+  updateMeasureNotes,
   updateSongMetadata,
 } from "../store/songsSlice";
 
@@ -39,76 +41,70 @@ interface SongEditorProps {
 
 /** ---------- Helper Functions ---------- */
 
+// Get instrument config by key, with fallback for missing instruments
+function getInstrumentConfig(key: string, configs: InstrumentConfig[]): InstrumentConfig {
+  const config = configs.find(c => c.key === key);
+  if (config) return config;
+
+  // Fallback for missing/deleted instruments
+  return {
+    key,
+    name: `Unknown (${key})`,
+    displayOrder: 999,
+    availableNotes: ['.'],
+    cycleOrder: ['.'],
+    noteLabels: { '.': 'Rest' },
+    noteColors: { '.': 'text-zinc-500' },
+    noteSymbols: { '.': '·' },
+    flamNotes: [],
+    created: new Date().toISOString(),
+    modified: new Date().toISOString()
+  };
+}
+
 // Get the next note in the cycle for the given instrument
-function getNextNote(current: Note, instrument: InstrumentType): Note {
-  if (instrument === 'djembe') {
-    const djembeCycle: Record<string, DjembeNote> = {
-      '.': 'B',
-      'B': 'T',
-      'T': 'S',
-      'S': '^',
-      '^': '.',
-    };
-
-    if (isFlam(current)) {
-      return '.';
-    }
-
-    return djembeCycle[current as string] || '.';
-  } else {
-    // Dun dun instruments (sangban, kenkeni, dundunba)
-    const dunDunCycle: Record<string, DunDunNote> = {
-      '.': 'O',
-      'O': 'M',
-      'M': '.',
-    };
-
-    if (isFlam(current)) {
-      return '.';
-    }
-
-    return dunDunCycle[current as string] || '.';
+function getNextNote(current: Note, config: InstrumentConfig): Note {
+  // Flams cycle back to rest
+  if (isFlam(current)) {
+    return '.';
   }
+
+  // Find current note in cycle order
+  const currentIndex = config.cycleOrder.indexOf(current as string);
+  if (currentIndex === -1) {
+    // Note not in cycle, default to first note
+    return (config.cycleOrder[0] || '.') as Note;
+  }
+
+  // Get next note in cycle
+  const nextIndex = (currentIndex + 1) % config.cycleOrder.length;
+  return config.cycleOrder[nextIndex] as Note;
 }
 
 // Get symbol to display for a note
-function symbolFor(note: Note): string {
+function symbolFor(note: Note, config: InstrumentConfig): string {
   if (isFlam(note)) {
     return formatFlam(note);
   }
 
-  if (note === '.') return '·';
-  return note;
+  // Check for custom symbol override
+  if (config.noteSymbols && typeof note === 'string' && config.noteSymbols[note]) {
+    return config.noteSymbols[note];
+  }
+
+  return typeof note === 'string' ? note : '.';
 }
 
 // Get color class for a note
-function getColorClass(note: Note, instrument: InstrumentType): string {
+function getColorClass(note: Note, config: InstrumentConfig): string {
   if (isFlam(note)) {
     // Open flams use brighter purple, closed flams use regular purple
     return note.open ? 'text-purple-200' : 'text-purple-300';
   }
 
-  // Check if it's a djembe note or dun dun note based on the value
-  const isDjembe = typeof note === 'string' && ['B', 'T', 'S', '^'].includes(note);
-  const isDunDun = typeof note === 'string' && ['O', 'M'].includes(note);
-
-  if (isDjembe || instrument === 'djembe') {
-    switch (note) {
-      case 'B': return 'text-emerald-300';
-      case 'T': return 'text-sky-300';
-      case 'S': return 'text-orange-300';
-      case '^': return 'text-fuchsia-300';
-      case '.': return 'text-zinc-500';
-      default: return 'text-zinc-500';
-    }
-  } else if (isDunDun || ['sangban', 'kenkeni', 'dundunba', 'kenken'].includes(instrument)) {
-    // Dun dun instruments and cowbell
-    switch (note) {
-      case 'O': return instrument === 'kenken' ? 'text-cyan-300' : 'text-yellow-300';
-      case 'M': return 'text-gray-400';
-      case '.': return 'text-zinc-500';
-      default: return 'text-zinc-500';
-    }
+  // Get color from config
+  if (typeof note === 'string') {
+    return config.noteColors[note] || 'text-zinc-500';
   }
 
   return 'text-zinc-500';
@@ -127,14 +123,8 @@ function getSubdivisionLabels(divisionType: 'sixteenth' | 'triplet' | 'mixed'): 
 }
 
 // Get instrument display name
-function getInstrumentName(instrument: InstrumentType): string {
-  switch (instrument) {
-    case 'djembe': return 'Djembe';
-    case 'sangban': return 'Sangban';
-    case 'kenkeni': return 'Kenkeni';
-    case 'dundunba': return 'Dundunba';
-    case 'kenken': return 'Kenken (Bell)';
-  }
+function getInstrumentName(config: InstrumentConfig): string {
+  return config.name;
 }
 
 /** ---------- NotePickerDialog Component ---------- */
@@ -143,7 +133,7 @@ interface NotePickerDialogProps {
   isOpen: boolean;
   onClose: () => void;
   currentNote: Note;
-  instrument: InstrumentType;
+  instrumentConfig: InstrumentConfig;
   onSelectNote: (note: Note) => void;
 }
 
@@ -151,14 +141,20 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
   isOpen,
   onClose,
   currentNote,
-  instrument,
+  instrumentConfig,
   onSelectNote,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Flam builder state - default to tS (Tone grace, Slap main, closed)
-  const [flamGrace, setFlamGrace] = useState<DjembeNote>('T');
-  const [flamMain, setFlamMain] = useState<DjembeNote>('S');
+  // Flam builder state - default to first two flam-compatible notes
+  const defaultFlamNotes = instrumentConfig.flamNotes.length >= 2
+    ? [instrumentConfig.flamNotes[0], instrumentConfig.flamNotes[1]]
+    : instrumentConfig.availableNotes.length >= 2
+    ? [instrumentConfig.availableNotes[1], instrumentConfig.availableNotes[1]]
+    : ['.', '.'];
+
+  const [flamGrace, setFlamGrace] = useState<string>(defaultFlamNotes[0]);
+  const [flamMain, setFlamMain] = useState<string>(defaultFlamNotes[1]);
   const [flamOpen, setFlamOpen] = useState(false);
 
   useEffect(() => {
@@ -180,15 +176,15 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
   // Initialize flam builder if current note is a flam
   useEffect(() => {
     if (isFlam(currentNote)) {
-      setFlamGrace(currentNote.grace);
-      setFlamMain(currentNote.main);
+      setFlamGrace(currentNote.grace as string);
+      setFlamMain(currentNote.main as string);
       setFlamOpen(currentNote.open || false);
     } else {
-      setFlamGrace('T');
-      setFlamMain('S');
+      setFlamGrace(defaultFlamNotes[0]);
+      setFlamMain(defaultFlamNotes[1]);
       setFlamOpen(false);
     }
-  }, [currentNote]);
+  }, [currentNote, defaultFlamNotes]);
 
   if (!isOpen) return null;
 
@@ -200,26 +196,16 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
   const handleCreateFlam = () => {
     const flam: FlamType = {
       type: 'flam',
-      grace: flamGrace,
-      main: flamMain,
+      grace: flamGrace as DjembeNote,
+      main: flamMain as DjembeNote,
       open: flamOpen,
     };
     handleSelect(flam);
   };
 
-  // Available notes for flam components (no rest or accent for grace notes)
-  const djembeBasicNotes: DjembeNote[] = ['.', 'B', 'T', 'S', '^'];
-  const flamNoteOptions: DjembeNote[] = ['B', 'T', 'S', '^'];
-
-  // Helper to get note label
-  const getNoteLabel = (note: DjembeNote): string => {
-    switch (note) {
-      case 'B': return 'Bass';
-      case 'T': return 'Tone';
-      case 'S': return 'Slap';
-      case '^': return 'Accent';
-      default: return '';
-    }
+  // Helper to get note label from config
+  const getNoteLabel = (note: string): string => {
+    return instrumentConfig.noteLabels[note] || note;
   };
 
   return (
@@ -242,30 +228,30 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
           </button>
         </div>
 
-        {instrument === 'djembe' ? (
-          <div className="space-y-4">
-            {/* Basic Notes Grid */}
-            <div>
-              <label className="text-xs text-zinc-400 mb-2 block">Basic Notes</label>
-              <div className="grid grid-cols-5 gap-2">
-                {djembeBasicNotes.map((note) => (
-                  <button
-                    key={note}
-                    onClick={() => handleSelect(note)}
-                    className={`px-3 py-2 rounded text-sm font-semibold ${
-                      currentNote === note
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-zinc-700 hover:bg-zinc-600'
-                    } ${getColorClass(note, 'djembe')}`}
-                    title={note === '.' ? 'Rest' : getNoteLabel(note)}
-                  >
-                    {note === '.' ? '·' : note}
-                  </button>
-                ))}
-              </div>
+        <div className="space-y-4">
+          {/* Basic Notes Grid */}
+          <div>
+            <label className="text-xs text-zinc-400 mb-2 block">Basic Notes</label>
+            <div className="grid grid-cols-5 gap-2">
+              {instrumentConfig.availableNotes.map((note: string) => (
+                <button
+                  key={note}
+                  onClick={() => handleSelect(note as Note)}
+                  className={`px-3 py-2 rounded text-sm font-semibold ${
+                    currentNote === note
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-zinc-700 hover:bg-zinc-600'
+                  } ${getColorClass(note as Note, instrumentConfig)}`}
+                  title={getNoteLabel(note)}
+                >
+                  {symbolFor(note as Note, instrumentConfig)}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Flam Builder */}
+          {/* Flam Builder - only show if instrument has flam-compatible notes */}
+          {instrumentConfig.flamNotes.length > 0 && (
             <div className="space-y-3 pt-2 border-t border-zinc-700">
               <label className="text-xs text-zinc-400 block">Flam Builder</label>
 
@@ -273,7 +259,7 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
               <div>
                 <label className="text-xs text-zinc-500 mb-1 block">Grace Note (leading)</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {flamNoteOptions.map((note) => (
+                  {instrumentConfig.flamNotes.map((note: string) => (
                     <button
                       key={`grace-${note}`}
                       onClick={() => setFlamGrace(note)}
@@ -281,7 +267,7 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
                         flamGrace === note
                           ? 'bg-blue-600 text-white'
                           : 'bg-zinc-700 hover:bg-zinc-600'
-                      } ${getColorClass(note, 'djembe')}`}
+                      } ${getColorClass(note as Note, instrumentConfig)}`}
                       title={getNoteLabel(note)}
                     >
                       {note}
@@ -294,7 +280,7 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
               <div>
                 <label className="text-xs text-zinc-500 mb-1 block">Main Note</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {flamNoteOptions.map((note) => (
+                  {instrumentConfig.flamNotes.map((note: string) => (
                     <button
                       key={`main-${note}`}
                       onClick={() => setFlamMain(note)}
@@ -302,7 +288,7 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
                         flamMain === note
                           ? 'bg-blue-600 text-white'
                           : 'bg-zinc-700 hover:bg-zinc-600'
-                      } ${getColorClass(note, 'djembe')}`}
+                      } ${getColorClass(note as Note, instrumentConfig)}`}
                       title={getNoteLabel(note)}
                     >
                       {note}
@@ -343,7 +329,7 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-zinc-500">Preview:</label>
                   <div className="text-lg font-bold text-purple-300">
-                    {formatFlam({ type: 'flam', grace: flamGrace, main: flamMain, open: flamOpen })}
+                    {formatFlam({ type: 'flam', grace: flamGrace as DjembeNote, main: flamMain as DjembeNote, open: flamOpen })}
                   </div>
                 </div>
                 <button
@@ -354,28 +340,8 @@ const NotePickerDialog: React.FC<NotePickerDialogProps> = ({
                 </button>
               </div>
             </div>
-          </div>
-        ) : (
-          // Dun Dun instruments (simple notes only, no flams)
-          <div>
-            <label className="text-xs text-zinc-400 mb-2 block">Notes</label>
-            <div className="grid grid-cols-3 gap-2">
-              {['.', 'O', 'M'].map((note) => (
-                <button
-                  key={note}
-                  onClick={() => handleSelect(note as Note)}
-                  className={`px-3 py-2 rounded text-sm font-semibold ${
-                    currentNote === note
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-zinc-700 hover:bg-zinc-600'
-                  } ${getColorClass(note as Note, instrument)}`}
-                >
-                  {note === '.' ? '·' : note}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -401,6 +367,9 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
   canRemove,
 }) => {
   const dispatch = useAppDispatch();
+  const instruments = useAppSelector(state => state.instruments.instruments);
+  const instrumentConfig = getInstrumentConfig(track.instrument, instruments);
+
   const subdivisions = getSubdivisionsPerBeat(measure.timeSignature.divisionType);
   const beats = measure.timeSignature.beats;
 
@@ -417,7 +386,7 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
     if (!editable) return;
 
     const newNotes = [...track.notes];
-    newNotes[index] = getNextNote(newNotes[index], track.instrument);
+    newNotes[index] = getNextNote(newNotes[index], instrumentConfig);
 
     dispatch(updateTrackNotes({
       songId,
@@ -519,8 +488,8 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
     <>
       <div className="border-t border-zinc-600 first:border-t-0">
         <div className="flex items-center justify-between px-1.5 sm:px-2 py-0.5 sm:py-1 bg-zinc-800/30">
-          <span className="text-[10px] sm:text-xs text-zinc-400 truncate">
-            {getInstrumentName(track.instrument)}
+          <span className={`text-[10px] sm:text-xs truncate ${instrumentConfig.color || 'text-zinc-400'}`}>
+            {getInstrumentName(instrumentConfig)}
             {track.label && ` - ${track.label}`}
           </span>
           {editable && canRemove && (
@@ -552,7 +521,7 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
                         'h-8 w-6 sm:w-10 flex items-center justify-center text-xs sm:text-sm font-semibold',
                         'border-r border-b border-zinc-600',
                         editable ? 'cursor-pointer hover:bg-zinc-700/60' : '',
-                        getColorClass(note, track.instrument),
+                        getColorClass(note, instrumentConfig),
                       ].join(' ')}
                       title={
                         isFlam(note)
@@ -562,7 +531,7 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
                           : note
                       }
                     >
-                      {symbolFor(note)}
+                      {symbolFor(note, instrumentConfig)}
                     </div>
                   );
                 })}
@@ -580,7 +549,7 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
           isOpen={notePickerState.isOpen}
           onClose={() => setNotePickerState({ ...notePickerState, isOpen: false })}
           currentNote={track.notes[notePickerState.noteIndex]}
-          instrument={track.instrument}
+          instrumentConfig={instrumentConfig}
           onSelectNote={handleNoteSelect}
         />
       )}
@@ -675,8 +644,12 @@ const MeasureView: React.FC<MeasureViewProps> = ({
   canRemove,
 }) => {
   const dispatch = useAppDispatch();
+  const allInstruments = useAppSelector(state => state.instruments.instruments);
+  const instruments = [...allInstruments].sort((a, b) => a.displayOrder - b.displayOrder);
   const [showAddTrack, setShowAddTrack] = useState(false);
   const [showTimeSignature, setShowTimeSignature] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [tempNotes, setTempNotes] = useState(measure.notes || '');
   const beats = measure.timeSignature.beats;
   const subLabels = getSubdivisionLabels(measure.timeSignature.divisionType);
 
@@ -706,12 +679,12 @@ const MeasureView: React.FC<MeasureViewProps> = ({
     }));
   };
 
-  const handleAddTrack = (instrument: InstrumentType) => {
+  const handleAddTrack = (instrumentKey: string) => {
     dispatch(addTrack({
       songId,
       sectionId,
       measureId: measure.id,
-      instrument,
+      instrument: instrumentKey,
     }));
     setShowAddTrack(false);
   };
@@ -725,9 +698,31 @@ const MeasureView: React.FC<MeasureViewProps> = ({
         beats,
         division: 4,
         divisionType,
+        feel: measure.timeSignature.feel, // preserve current feel
       },
     }));
-    setShowTimeSignature(false);
+  };
+
+  const handleFeelChange = (feel: Feel | undefined) => {
+    dispatch(updateMeasureTimeSignature({
+      songId,
+      sectionId,
+      measureId: measure.id,
+      timeSignature: {
+        ...measure.timeSignature,
+        feel,
+      },
+    }));
+  };
+
+  const handleSaveNotes = () => {
+    dispatch(updateMeasureNotes({
+      songId,
+      sectionId,
+      measureId: measure.id,
+      notes: tempNotes.trim() || '',
+    }));
+    setIsEditingNotes(false);
   };
 
   const currentDivisionType = measure.timeSignature.divisionType === 'mixed'
@@ -760,6 +755,11 @@ const MeasureView: React.FC<MeasureViewProps> = ({
               {beats}/4 · {measure.timeSignature.divisionType === 'sixteenth' ? '16' : measure.timeSignature.divisionType === 'triplet' ? '3' : measure.timeSignature.divisionType}
             </span>
           )}
+          {measure.timeSignature.feel && measure.timeSignature.feel !== 'straight' && (
+            <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded bg-purple-900/30 text-purple-300 border border-purple-700/50 font-medium">
+              {measure.timeSignature.feel}
+            </span>
+          )}
         </div>
         {editable && (
           <div className="flex items-center gap-1 sm:gap-2">
@@ -785,7 +785,7 @@ const MeasureView: React.FC<MeasureViewProps> = ({
 
       {/* Time Signature Editor */}
       {editable && showTimeSignature && (
-        <div className="px-3 py-2 bg-zinc-800/30 border-b border-zinc-700">
+        <div className="px-3 py-2 bg-zinc-800/30 border-b border-zinc-700 space-y-2">
           <div className="flex gap-2 items-center flex-wrap">
             <span className="text-xs text-zinc-400">Beats:</span>
             {[2, 3, 4, 6].map((b) => (
@@ -822,6 +822,22 @@ const MeasureView: React.FC<MeasureViewProps> = ({
             >
               Triplets
             </button>
+          </div>
+          <div className="flex gap-2 items-center flex-wrap">
+            <span className="text-xs text-zinc-400">Feel:</span>
+            {['straight', 'swing', 'half-time', 'double-time'].map((f) => (
+              <button
+                key={f}
+                onClick={() => handleFeelChange(f === 'straight' ? undefined : f as Feel)}
+                className={`px-2 py-1 text-xs rounded ${
+                  (measure.timeSignature.feel || 'straight') === f
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -874,36 +890,15 @@ const MeasureView: React.FC<MeasureViewProps> = ({
             </button>
           ) : (
             <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => handleAddTrack('djembe')}
-                className="px-2 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 rounded"
-              >
-                Djembe
-              </button>
-              <button
-                onClick={() => handleAddTrack('sangban')}
-                className="px-2 py-1 text-xs bg-yellow-700 hover:bg-yellow-600 rounded"
-              >
-                Sangban
-              </button>
-              <button
-                onClick={() => handleAddTrack('kenkeni')}
-                className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded"
-              >
-                Kenkeni
-              </button>
-              <button
-                onClick={() => handleAddTrack('dundunba')}
-                className="px-2 py-1 text-xs bg-yellow-800 hover:bg-yellow-700 rounded"
-              >
-                Dundunba
-              </button>
-              <button
-                onClick={() => handleAddTrack('kenken')}
-                className="px-2 py-1 text-xs bg-cyan-700 hover:bg-cyan-600 rounded"
-              >
-                Kenken
-              </button>
+              {instruments.map(config => (
+                <button
+                  key={config.key}
+                  onClick={() => handleAddTrack(config.key)}
+                  className={`px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 rounded ${config.color || 'text-zinc-100'}`}
+                >
+                  {config.name}
+                </button>
+              ))}
               <button
                 onClick={() => setShowAddTrack(false)}
                 className="px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 rounded"
@@ -912,6 +907,48 @@ const MeasureView: React.FC<MeasureViewProps> = ({
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Measure Notes */}
+      {(editable || measure.notes) && (
+        <div className="px-2 py-2 border-t border-zinc-700">
+          {editable && isEditingNotes ? (
+            <textarea
+              value={tempNotes}
+              onChange={(e) => setTempNotes(e.target.value)}
+              onBlur={handleSaveNotes}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setTempNotes(measure.notes || '');
+                  setIsEditingNotes(false);
+                }
+                // Allow Ctrl/Cmd+Enter to save
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  handleSaveNotes();
+                }
+              }}
+              placeholder="Add notes for this measure..."
+              autoFocus
+              className="w-full text-xs bg-zinc-800 text-zinc-300 px-2 py-1.5 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none resize-y min-h-[50px]"
+            />
+          ) : measure.notes ? (
+            <div
+              className={`text-xs text-zinc-400 italic px-2 py-1.5 bg-zinc-800/30 rounded border border-zinc-700/50 ${
+                editable ? 'cursor-pointer hover:bg-zinc-800/50 hover:border-zinc-600' : ''
+              }`}
+              onClick={() => editable && setIsEditingNotes(true)}
+            >
+              {measure.notes}
+            </div>
+          ) : editable ? (
+            <button
+              onClick={() => setIsEditingNotes(true)}
+              className="w-full py-1 text-xs text-zinc-500 hover:text-zinc-400 border border-dashed border-zinc-600 rounded hover:border-zinc-500"
+            >
+              + Add measure notes
+            </button>
+          ) : null}
         </div>
       )}
     </div>
@@ -934,10 +971,14 @@ const SectionView: React.FC<SectionViewProps> = ({
   canRemove,
 }) => {
   const dispatch = useAppDispatch();
+  const allInstruments = useAppSelector(state => state.instruments.instruments);
+  const sortedInstruments = [...allInstruments].sort((a, b) => a.displayOrder - b.displayOrder);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingTempo, setIsEditingTempo] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempName, setTempName] = useState(section.name);
   const [tempTempo, setTempTempo] = useState(section.tempo?.toString() || '');
+  const [tempNotes, setTempNotes] = useState(section.notes || '');
 
   const handleRemoveSection = () => {
     dispatch(removeSection({
@@ -947,9 +988,11 @@ const SectionView: React.FC<SectionViewProps> = ({
   };
 
   const handleAddMeasure = () => {
+    const defaultInstrument = sortedInstruments[0]?.key || 'djembe';
     dispatch(addMeasure({
       songId,
       sectionId: section.id,
+      defaultInstrument,
     }));
   };
 
@@ -984,6 +1027,15 @@ const SectionView: React.FC<SectionViewProps> = ({
     }));
     setTempTempo('');
     setIsEditingTempo(false);
+  };
+
+  const handleSaveNotes = () => {
+    dispatch(updateSection({
+      songId,
+      sectionId: section.id,
+      notes: tempNotes.trim() || undefined,
+    }));
+    setIsEditingNotes(false);
   };
 
   return (
@@ -1079,6 +1131,48 @@ const SectionView: React.FC<SectionViewProps> = ({
           </button>
         )}
       </div>
+
+      {/* Section Notes */}
+      {(editable || section.notes) && (
+        <div className="ml-0 sm:ml-6">
+          {editable && isEditingNotes ? (
+            <textarea
+              value={tempNotes}
+              onChange={(e) => setTempNotes(e.target.value)}
+              onBlur={handleSaveNotes}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setTempNotes(section.notes || '');
+                  setIsEditingNotes(false);
+                }
+                // Allow Ctrl/Cmd+Enter to save
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  handleSaveNotes();
+                }
+              }}
+              placeholder="Add notes for this section..."
+              autoFocus
+              className="w-full text-xs bg-zinc-800 text-zinc-300 px-3 py-2 rounded border border-zinc-600 focus:border-blue-500 focus:outline-none resize-y min-h-[60px]"
+            />
+          ) : section.notes ? (
+            <div
+              className={`text-xs text-zinc-400 italic px-3 py-2 bg-zinc-800/30 rounded border border-zinc-700/50 ${
+                editable ? 'cursor-pointer hover:bg-zinc-800/50 hover:border-zinc-600' : ''
+              }`}
+              onClick={() => editable && setIsEditingNotes(true)}
+            >
+              {section.notes}
+            </div>
+          ) : editable ? (
+            <button
+              onClick={() => setIsEditingNotes(true)}
+              className="text-xs text-zinc-500 hover:text-zinc-400 px-2 py-1 border border-dashed border-zinc-600 rounded"
+            >
+              + Add section notes
+            </button>
+          ) : null}
+        </div>
+      )}
 
       {/* Measures Grid */}
       <div className={editable ? 'space-y-2' : 'space-y-3 sm:space-y-0'}>
@@ -1276,6 +1370,14 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
     setIsEditingDescription(false);
   };
 
+  const handleLinksChange = (links: string[]) => {
+    console.log('handleLinksChange', links);
+    dispatch(updateSongMetadata({
+      id: song.id,
+      links: links.length > 0 ? links : [],
+    }));
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 text-zinc-100">
       {/* Header */}
@@ -1375,6 +1477,15 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
               ) : null}
             </>
           )}
+
+          {/* Links */}
+          <div className="mt-3">
+            <LinkEditor
+              links={song.links || []}
+              onLinksChange={handleLinksChange}
+              editable={isEditing}
+            />
+          </div>
         </div>
       </header>
 

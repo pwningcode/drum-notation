@@ -5,11 +5,12 @@ import {
   Measure,
   InstrumentTrack,
   Note,
-  InstrumentType,
+  InstrumentKey,
   TimeSignature,
   generateId,
   getSubdivisionsPerBeat
 } from '../types';
+import { loadDefaultSongs } from './persistence';
 
 export interface SongsState {
   songs: Song[];
@@ -44,11 +45,13 @@ const songsSlice = createSlice({
     // Add a new song (or import a complete song)
     addSong: (state, action: PayloadAction<Partial<Song> & { title: string }>) => {
       const now = new Date().toISOString();
+      const maxDisplayOrder = Math.max(0, ...state.songs.map(s => s.displayOrder ?? 0));
 
       // If this looks like a complete imported song, use it directly
       if (action.payload.id && action.payload.sections && action.payload.created) {
         const importedSong: Song = {
           ...action.payload as Song,
+          displayOrder: action.payload.displayOrder ?? maxDisplayOrder + 1,
           modified: now
         };
         state.songs.push(importedSong);
@@ -60,6 +63,7 @@ const songsSlice = createSlice({
           title: action.payload.title,
           description: action.payload.description,
           tempo: action.payload.tempo || 120,
+          displayOrder: maxDisplayOrder + 1,
           sections: [
             {
               id: generateId(),
@@ -95,12 +99,14 @@ const songsSlice = createSlice({
     },
 
     // Update song metadata
-    updateSongMetadata: (state, action: PayloadAction<{ id: string; title?: string; tempo?: number; description?: string }>) => {
+    updateSongMetadata: (state, action: PayloadAction<{ id: string; title?: string; tempo?: number; description?: string; links?: string[] }>) => {
+      console.log('updateSongMetadata', action.payload);
       const song = state.songs.find(s => s.id === action.payload.id);
       if (song) {
         if (action.payload.title !== undefined) song.title = action.payload.title;
         if (action.payload.tempo !== undefined) song.tempo = action.payload.tempo;
         if (action.payload.description !== undefined) song.description = action.payload.description;
+        if (action.payload.links !== undefined) song.links = action.payload.links;
         song.modified = new Date().toISOString();
       }
     },
@@ -176,20 +182,21 @@ const songsSlice = createSlice({
     },
 
     // Update section metadata
-    updateSection: (state, action: PayloadAction<{ songId: string; sectionId: string; name?: string; tempo?: number }>) => {
+    updateSection: (state, action: PayloadAction<{ songId: string; sectionId: string; name?: string; tempo?: number; notes?: string }>) => {
       const song = state.songs.find(s => s.id === action.payload.songId);
       if (song) {
         const section = song.sections.find(s => s.id === action.payload.sectionId);
         if (section) {
           if (action.payload.name !== undefined) section.name = action.payload.name;
           if (action.payload.tempo !== undefined) section.tempo = action.payload.tempo;
+          if (action.payload.notes !== undefined) section.notes = action.payload.notes;
           song.modified = new Date().toISOString();
         }
       }
     },
 
     // Add a measure to a section
-    addMeasure: (state, action: PayloadAction<{ songId: string; sectionId: string; timeSignature?: TimeSignature }>) => {
+    addMeasure: (state, action: PayloadAction<{ songId: string; sectionId: string; timeSignature?: TimeSignature; defaultInstrument?: string }>) => {
       const song = state.songs.find(s => s.id === action.payload.songId);
       if (song) {
         const section = song.sections.find(s => s.id === action.payload.sectionId);
@@ -201,7 +208,7 @@ const songsSlice = createSlice({
             timeSignature: timeSig,
             tracks: [{
               id: generateId(),
-              instrument: 'djembe',
+              instrument: action.payload.defaultInstrument || 'djembe',
               notes: Array(timeSig.beats * subdivisions).fill('.')
             }]
           };
@@ -297,7 +304,7 @@ const songsSlice = createSlice({
     },
 
     // Add a track to a measure
-    addTrack: (state, action: PayloadAction<{ songId: string; sectionId: string; measureId: string; instrument: InstrumentType; label?: string }>) => {
+    addTrack: (state, action: PayloadAction<{ songId: string; sectionId: string; measureId: string; instrument: InstrumentKey; label?: string }>) => {
       const song = state.songs.find(s => s.id === action.payload.songId);
       if (song) {
         const section = song.sections.find(s => s.id === action.payload.sectionId);
@@ -380,6 +387,41 @@ const songsSlice = createSlice({
         }
       }
     },
+
+    // Update measure notes
+    updateMeasureNotes: (state, action: PayloadAction<{ songId: string; sectionId: string; measureId: string; notes: string }>) => {
+      const song = state.songs.find(s => s.id === action.payload.songId);
+      if (song) {
+        const section = song.sections.find(s => s.id === action.payload.sectionId);
+        if (section) {
+          const measure = section.measures.find(m => m.id === action.payload.measureId);
+          if (measure) {
+            measure.notes = action.payload.notes;
+            song.modified = new Date().toISOString();
+          }
+        }
+      }
+    },
+
+    // Reorder songs (drag and drop)
+    reorderSongs: (state, action: PayloadAction<Song[]>) => {
+      // Update displayOrder based on new array order
+      action.payload.forEach((song, index) => {
+        const existing = state.songs.find(s => s.id === song.id);
+        if (existing) {
+          existing.displayOrder = index;
+        }
+      });
+      // Sort songs by displayOrder
+      state.songs.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+    },
+
+    // Reset all songs to defaults
+    resetToDefaults: (state) => {
+      const defaultSongs = loadDefaultSongs();
+      state.songs = defaultSongs;
+      state.activeSongId = defaultSongs[0]?.id || '';
+    },
   },
 });
 
@@ -401,6 +443,9 @@ export const {
   removeTrack,
   updateTrackNotes,
   updateMeasureTimeSignature,
+  updateMeasureNotes,
+  reorderSongs,
+  resetToDefaults,
 } = songsSlice.actions;
 
 export default songsSlice.reducer;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { SongEditor } from "./components/SongEditor"
 import { HelpDialog } from "./components/HelpDialog"
 import { useAppSelector, useAppDispatch } from "./store/hooks"
@@ -15,6 +15,11 @@ export const App = () => {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const activeSong = songs.find((song) => song.id === activeSongId)
+
+  // Sort songs by displayOrder for the dropdown
+  const sortedSongs = useMemo(() => {
+    return [...songs].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+  }, [songs])
 
   // Check if this is the user's first visit
   useEffect(() => {
@@ -148,7 +153,7 @@ export const App = () => {
                   {isDropdownOpen && (
                     <div className="absolute top-full left-0 mt-2 w-64 bg-zinc-900 border border-zinc-700 rounded-md shadow-xl overflow-hidden">
                       <div>
-                        {songs.map((song) => (
+                        {sortedSongs.map((song) => (
                           <button
                             key={song.id}
                             onClick={() => handleSongSelect(song.id)}

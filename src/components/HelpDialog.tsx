@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SongManagement } from './SongManagement';
+import { InstrumentConfigComponent } from './InstrumentConfig';
+import { InstrumentEditor } from './InstrumentEditor';
+import { InstrumentConfig } from '../types';
 
 interface HelpDialogProps {
   isOpen: boolean;
@@ -11,6 +14,10 @@ interface HelpSection {
   title: string;
   content: React.ReactNode;
 }
+
+type Tab = 'help' | 'settings';
+
+const APP_VERSION = '2.1.0'; // Should match the version in persistence.ts
 
 const helpSections: HelpSection[] = [
   {
@@ -342,70 +349,40 @@ const helpSections: HelpSection[] = [
       </div>
     ),
   },
-  {
-    id: 'reset-data',
-    title: 'Manage Song Data',
-    content: (
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold text-zinc-100">Manage Song Data</h3>
-
-        <div className="space-y-4">
-          <div>
-            <p className="text-zinc-300">
-              Check the status of your songs compared to the bundled defaults. Export your custom
-              songs or modified versions for backup, and download default versions if you want to
-              restore any songs to their original state.
-            </p>
-          </div>
-
-          <SongManagement />
-
-          <div className="border-t border-zinc-700 pt-4 mt-6">
-            <h4 className="text-lg font-semibold text-zinc-100 mb-3">Reset All Data</h4>
-            <p className="text-zinc-300 mb-4">
-              If you need to start completely fresh, you can reset all song data. This will clear
-              your browser's storage and reload the application with the original bundled songs.
-            </p>
-
-            <div className="bg-red-900/20 border border-red-700 rounded p-4 mb-4">
-              <h5 className="font-semibold text-red-300 mb-2">Warning</h5>
-              <p className="text-red-200 text-sm mb-2">
-                This action will permanently delete all songs stored in your browser. Make sure to
-                export any songs you want to keep before resetting!
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                if (window.confirm(
-                  'Are you sure you want to reset all song data? This will delete all your songs and cannot be undone.\n\nMake sure you have exported any songs you want to keep!'
-                )) {
-                  localStorage.clear();
-                  window.location.reload();
-                }
-              }}
-              className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg transition-colors"
-            >
-              Reset All Song Data
-            </button>
-          </div>
-        </div>
-      </div>
-    ),
-  },
 ];
 
 export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
+  const [activeTab, setActiveTab] = useState<Tab>('help');
   const [activeSection, setActiveSection] = useState('getting-started');
   const contentRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // Instrument editor state
+  const [isInstrumentEditorOpen, setIsInstrumentEditorOpen] = useState(false);
+  const [editingInstrument, setEditingInstrument] = useState<InstrumentConfig | null>(null);
+
   useEffect(() => {
     if (isOpen) {
-      // Reset to first section when dialog opens
+      // Reset to first tab and section when dialog opens
+      setActiveTab('help');
       setActiveSection('getting-started');
     }
   }, [isOpen]);
+
+  const handleEditInstrument = (config: InstrumentConfig) => {
+    setEditingInstrument(config);
+    setIsInstrumentEditorOpen(true);
+  };
+
+  const handleAddInstrument = () => {
+    setEditingInstrument(null);
+    setIsInstrumentEditorOpen(true);
+  };
+
+  const handleCloseInstrumentEditor = () => {
+    setIsInstrumentEditorOpen(false);
+    setEditingInstrument(null);
+  };
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
@@ -427,7 +404,10 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
       <div className="relative w-full h-full max-w-6xl max-h-screen bg-zinc-900 sm:rounded-lg shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-700">
-          <h2 className="text-lg sm:text-2xl font-bold text-zinc-100">How to Use Drum Notation</h2>
+          <h2 className="text-lg sm:text-2xl font-bold text-zinc-100">
+            {activeTab === 'help' ? 'Help' : 'Settings'}
+          </h2>
+          <h3 className="text-sm text-zinc-500">App Version: {APP_VERSION}</h3>
           <button
             onClick={onClose}
             className="text-zinc-400 hover:text-zinc-200 text-2xl w-8 h-8 flex items-center justify-center"
@@ -437,44 +417,97 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b border-zinc-700 px-4 sm:px-6">
+          <button
+            onClick={() => setActiveTab('help')}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'help'
+                ? 'text-blue-400 border-b-2 border-blue-500'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Help
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'settings'
+                ? 'text-blue-400 border-b-2 border-blue-500'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Settings
+          </button>
+        </div>
+
         {/* Content */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Left Navigation - Hidden on mobile */}
-          <nav className="hidden sm:block w-64 border-r border-zinc-700 overflow-y-auto">
-            <ul className="py-4">
-              {helpSections.map((section) => (
-                <li key={section.id}>
-                  <button
-                    onClick={() => scrollToSection(section.id)}
-                    className={`w-full text-left px-6 py-3 transition-colors ${
-                      activeSection === section.id
-                        ? 'bg-blue-900/30 text-blue-400 border-r-2 border-blue-500'
-                        : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
-                    }`}
-                  >
-                    {section.title}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          {activeTab === 'help' ? (
+            <>
+              {/* Left Navigation - Hidden on mobile */}
+              <nav className="hidden sm:block w-64 border-r border-zinc-700 overflow-y-auto">
+                <ul className="py-4">
+                  {helpSections.map((section) => (
+                    <li key={section.id}>
+                      <button
+                        onClick={() => scrollToSection(section.id)}
+                        className={`w-full text-left px-6 py-3 transition-colors ${
+                          activeSection === section.id
+                            ? 'bg-blue-900/30 text-blue-400 border-r-2 border-blue-500'
+                            : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                        }`}
+                      >
+                        {section.title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
 
-          {/* Main Content */}
-          <div ref={contentRef} className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
-            <div className="max-w-3xl space-y-12">
-              {helpSections.map((section) => (
-                <div
-                  key={section.id}
-                  ref={(el) => {
-                    sectionRefs.current[section.id] = el;
-                  }}
-                  className="scroll-mt-6"
-                >
-                  {section.content}
+              {/* Main Content */}
+              <div ref={contentRef} className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
+                <div className="max-w-3xl space-y-12">
+                  {helpSections.map((section) => (
+                    <div
+                      key={section.id}
+                      ref={(el) => {
+                        sectionRefs.current[section.id] = el;
+                      }}
+                      className="scroll-mt-6"
+                    >
+                      {section.content}
+                    </div>
+                  ))}
+
                 </div>
-              ))}
+              </div>
+            </>
+          ) : (
+            /* Settings Tab */
+            <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
+              <div className="max-w-4xl space-y-8">
+                {/* Instrument Configuration */}
+                <div>
+                  <InstrumentConfigComponent
+                    onEditInstrument={handleEditInstrument}
+                    onAddInstrument={handleAddInstrument}
+                  />
+                </div>
+
+                {/* Song Management */}
+                <div className="border-t border-zinc-700 pt-6">
+                  <h3 className="text-xl font-semibold text-zinc-100 mb-4">Song Management</h3>
+                  <p className="text-zinc-300 mb-4">
+                    Check the status of your songs compared to the bundled defaults. Export your custom
+                    songs or modified versions for backup, and download default versions if you want to
+                    restore any songs to their original state.
+                  </p>
+                  <SongManagement />
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -483,10 +516,17 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
             onClick={onClose}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg"
           >
-            Got It
+            Close
           </button>
         </div>
       </div>
+
+      {/* Instrument Editor Modal */}
+      <InstrumentEditor
+        isOpen={isInstrumentEditorOpen}
+        onClose={handleCloseInstrumentEditor}
+        initialConfig={editingInstrument}
+      />
     </div>
   );
 };
