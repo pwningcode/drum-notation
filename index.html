@@ -2,7 +2,35 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- Performance & SEO Preconnects -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png" />
+    <link rel="apple-touch-icon" href="/apple-icon.png" />
+    <link rel="apple-touch-icon-precomposed" href="/apple-icon-precomposed.png" />
+    
+    <!-- Manifest and Browser Config -->
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    <meta name="msapplication-TileColor" content="#18181b" />
+    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png" />
 
     <!-- Mobile Viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, user-scalable=yes">
@@ -14,11 +42,61 @@
     <meta name="apple-mobile-web-app-title" content="Drum Notation">
     <meta name="theme-color" content="#18181b">
 
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="West African drum notation for Djembe, Sangban, Kenkeni, and Dundunba ensembles">
-    <meta name="keywords" content="drum notation, djembe, west african drums, rhythm notation, percussion">
-
+    <!-- Primary SEO Meta Tags -->
     <title>Drum Notation - West African Rhythms</title>
+    <meta name="title" content="Drum Notation - West African Rhythms" />
+    <meta name="description" content="West African drum notation for Djembe, Sangban, Kenkeni, and Dundunba ensembles. Create, edit, and share traditional West African drum rhythms with interactive notation.">
+    <meta name="keywords" content="drum notation, djembe, west african drums, rhythm notation, percussion, sangban, kenkeni, dundunba, guinea, mali, west africa, traditional music">
+    <meta name="author" content="Drum Notation">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="7 days">
+    <link rel="canonical" href="https://drum-notation.github.io/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://drum-notation.github.io/" />
+    <meta property="og:title" content="Drum Notation - West African Rhythms" />
+    <meta property="og:description" content="West African drum notation for Djembe, Sangban, Kenkeni, and Dundunba ensembles. Create, edit, and share traditional West African drum rhythms." />
+    <meta property="og:image" content="https://drum-notation.github.io/guinea-flag.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Guinea flag - representing West African drum traditions" />
+    <meta property="og:site_name" content="Drum Notation" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://drum-notation.github.io/" />
+    <meta name="twitter:title" content="Drum Notation - West African Rhythms" />
+    <meta name="twitter:description" content="West African drum notation for Djembe, Sangban, Kenkeni, and Dundunba ensembles. Create, edit, and share traditional West African drum rhythms." />
+    <meta name="twitter:image" content="https://drum-notation.github.io/guinea-flag.png" />
+    <meta name="twitter:image:alt" content="Guinea flag - representing West African drum traditions" />
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Drum Notation",
+      "description": "West African drum notation for Djembe, Sangban, Kenkeni, and Dundunba ensembles",
+      "url": "https://drum-notation.github.io/",
+      "applicationCategory": "MusicApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Interactive drum notation",
+        "West African rhythm patterns",
+        "Djembe, Sangban, Kenkeni, and Dundunba support",
+        "Create and edit rhythms",
+        "Share drum patterns"
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
