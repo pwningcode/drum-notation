@@ -6,9 +6,10 @@
 import { InstrumentConfig } from '../types';
 import { DEFAULT_INSTRUMENTS } from '../assets/defaultInstruments';
 import { validateInstrumentConfig } from '../utils/instrumentValidation';
+import { INSTRUMENTS_SCHEMA_VERSION } from '../config/schemaVersions';
 
 const INSTRUMENTS_STORAGE_KEY = 'drum-notation-instruments';
-const INSTRUMENTS_VERSION = '1.0.0';
+const INSTRUMENTS_VERSION = INSTRUMENTS_SCHEMA_VERSION;
 
 export interface InstrumentsStorageState {
   version: string;

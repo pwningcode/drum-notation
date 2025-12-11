@@ -1,13 +1,18 @@
 import { configureStore } from '@reduxjs/toolkit';
 import songsReducer from './songsSlice';
 import instrumentsReducer from './instrumentsSlice';
+import migrationReducer from './migrationSlice';
 import { loadState, saveState } from './persistence';
 import { loadInstruments, saveInstruments } from './instrumentPersistence';
+import { loadMigrationState, saveMigrationState } from './migrationPersistence';
+import { configureMigrationDetection } from './migrationDetection';
+import { initializeMigration } from './migrationSlice';
 
 const store = configureStore({
   reducer: {
     songs: songsReducer,
     instruments: instrumentsReducer,
+    migration: migrationReducer,
   },
 });
 
@@ -21,6 +26,15 @@ if (initialState.songs) {
 const instrumentsState = loadInstruments();
 store.dispatch({ type: 'instruments/initializeInstruments', payload: instrumentsState });
 
+// Load migration state
+const migrationState = loadMigrationState();
+if (migrationState && Object.keys(migrationState).length > 0) {
+  store.dispatch(initializeMigration(migrationState));
+}
+
+// Configure migration detection (checks for version mismatches)
+configureMigrationDetection(store);
+
 // Save state to localStorage whenever it changes
 store.subscribe(() => {
   const state = store.getState();
@@ -33,6 +47,9 @@ store.subscribe(() => {
     version: state.instruments.version,
     instruments: state.instruments.instruments
   });
+
+  // Save migration state separately
+  saveMigrationState(state.migration);
 });
 
 export { store };

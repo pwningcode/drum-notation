@@ -8,9 +8,10 @@ import tiribaSong from '../assets/songs/tiriba.json';
 import { SongsState } from './songsSlice';
 import { Song, LegacySongData } from '../types';
 import { validateSong, isLegacyFormat, migrateLegacySongs } from '../migration';
+import { SONGS_SCHEMA_VERSION } from '../config/schemaVersions';
 
 const STORAGE_KEY = 'drum-notation-redux-state';
-const CURRENT_VERSION = '2.1.0';
+const CURRENT_VERSION = SONGS_SCHEMA_VERSION;
 
 interface RootState {
   songs: SongsState;
@@ -65,21 +66,16 @@ export const loadState = (): Partial<RootState> => {
           displayOrder: song.displayOrder ?? index
         }));
 
-        // Check if version has changed - if so, merge with bundled songs
+        // IMPORTANT: DO NOT auto-migrate on version mismatch
+        // This was causing data loss by overwriting all user songs with defaults
+        // Migration will be handled by the migration dialog system instead
         const savedVersion = parsedState.songs.version || '2.0.0';
         if (savedVersion !== CURRENT_VERSION) {
-          console.log(`Version changed from ${savedVersion} to ${CURRENT_VERSION}, merging bundled songs`);
-          const mergedSongs = mergeSongsWithDefaults(songsWithOrder, defaultSongs);
-          return {
-            songs: {
-              songs: mergedSongs,
-              version: CURRENT_VERSION,
-              activeSongId: parsedState.songs.activeSongId || mergedSongs[0]?.id || '',
-            }
-          };
+          console.log(`Version mismatch: saved ${savedVersion}, current ${CURRENT_VERSION}. Migration system will handle this.`);
+          // Return user's data as-is - migration dialog will offer options
         }
 
-        // All songs are valid and version matches, return with displayOrder
+        // All songs are valid, return with displayOrder
         return {
           songs: {
             songs: songsWithOrder,
@@ -131,17 +127,9 @@ export const saveState = (state: RootState): void => {
   }
 };
 
-/**
- * Merges user's saved songs with bundled default songs.
- * This ensures new bundled songs are available while preserving user modifications.
- * Strategy: Overwrite with all bundled songs (user said it's OK to overwrite for now)
- */
-function mergeSongsWithDefaults(savedSongs: Song[], defaultSongs: Song[]): Song[] {
-  // For now, as per user request: "we can just overwrite what the user has in the browser"
-  // This means when new songs are added, we replace everything with the bundled songs
-  console.log(`Replacing ${savedSongs.length} saved songs with ${defaultSongs.length} bundled songs`);
-  return defaultSongs;
-}
+// NOTE: The old mergeSongsWithDefaults() function has been removed because it caused data loss.
+// It was automatically overwriting all user data with defaults on version changes.
+// Smart merging will be handled by the migration system instead (see src/migration/mergeStrategy.ts)
 
 export function loadDefaultSongs(): Song[] {
   try {

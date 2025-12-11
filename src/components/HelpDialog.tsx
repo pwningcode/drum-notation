@@ -3,6 +3,9 @@ import { SongManagement } from './SongManagement';
 import { InstrumentConfigComponent } from './InstrumentConfig';
 import { InstrumentEditor } from './InstrumentEditor';
 import { InstrumentConfig } from '../types';
+import { useAppSelector, useAppDispatch } from '../store';
+import { setDialogOpen } from '../store/migrationSlice';
+import { SONGS_SCHEMA_VERSION, INSTRUMENTS_SCHEMA_VERSION } from '../config/schemaVersions';
 
 interface HelpDialogProps {
   isOpen: boolean;
@@ -352,6 +355,8 @@ const helpSections: HelpSection[] = [
 ];
 
 export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
+  const dispatch = useAppDispatch();
+  const migrationState = useAppSelector(state => state.migration);
   const [activeTab, setActiveTab] = useState<Tab>('help');
   const [activeSection, setActiveSection] = useState('getting-started');
   const contentRef = useRef<HTMLDivElement>(null);
@@ -504,6 +509,96 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
                     restore any songs to their original state.
                   </p>
                   <SongManagement />
+                </div>
+
+                {/* Migration Status */}
+                <div className="border-t border-zinc-700 pt-6">
+                  <h3 className="text-xl font-semibold text-zinc-100 mb-4">Schema Migrations</h3>
+                  <p className="text-zinc-300 mb-4">
+                    The app uses versioned schemas to ensure your data remains compatible as new features
+                    are added. You'll be notified when updates are available for your songs or instruments.
+                  </p>
+
+                  {/* Current Versions */}
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded p-4 mb-4">
+                    <h4 className="font-semibold text-zinc-200 mb-3">Current Schema Versions</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <div className="text-zinc-400">Songs Schema</div>
+                        <div className="text-lg font-mono text-blue-400">{SONGS_SCHEMA_VERSION}</div>
+                      </div>
+                      <div>
+                        <div className="text-zinc-400">Instruments Schema</div>
+                        <div className="text-lg font-mono text-blue-400">{INSTRUMENTS_SCHEMA_VERSION}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Migration History */}
+                  {(migrationState.songs.lastMigration || migrationState.instruments.lastMigration) && (
+                    <div className="bg-zinc-800/50 border border-zinc-700 rounded p-4 mb-4">
+                      <h4 className="font-semibold text-zinc-200 mb-3">Migration History</h4>
+                      <div className="space-y-3 text-sm">
+                        {migrationState.songs.lastMigration && (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-zinc-300">
+                                Songs: {migrationState.songs.lastMigration.fromVersion} → {migrationState.songs.lastMigration.toVersion}
+                              </div>
+                              <div className="text-zinc-500 text-xs">
+                                {new Date(migrationState.songs.lastMigration.timestamp).toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400 border border-green-700">
+                              {migrationState.songs.lastMigration.userChoice}
+                            </div>
+                          </div>
+                        )}
+                        {migrationState.instruments.lastMigration && (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-zinc-300">
+                                Instruments: {migrationState.instruments.lastMigration.fromVersion} → {migrationState.instruments.lastMigration.toVersion}
+                              </div>
+                              <div className="text-zinc-500 text-xs">
+                                {new Date(migrationState.instruments.lastMigration.timestamp).toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400 border border-green-700">
+                              {migrationState.instruments.lastMigration.userChoice}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pending Migrations */}
+                  {(migrationState.songs.pendingMigration?.needed || migrationState.instruments.pendingMigration?.needed) && (
+                    <div className="bg-yellow-900/20 border border-yellow-700 rounded p-4 mb-4">
+                      <h4 className="font-semibold text-yellow-200 mb-2">Pending Migrations</h4>
+                      <p className="text-yellow-100 text-sm mb-3">
+                        Schema updates are available. Click the button below to review and apply them.
+                      </p>
+                      <button
+                        onClick={() => dispatch(setDialogOpen(true))}
+                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded text-sm font-medium"
+                      >
+                        Review Migrations
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Info Box */}
+                  <div className="bg-blue-900/20 border border-blue-700 rounded p-4">
+                    <h4 className="font-semibold text-blue-200 mb-2">How Migrations Work</h4>
+                    <ul className="text-sm text-blue-100 space-y-1">
+                      <li>• Schema updates are never applied automatically</li>
+                      <li>• You'll be shown exactly what changes will be made</li>
+                      <li>• You can choose to keep your data, accept updates, or export a backup</li>
+                      <li>• Dismissed migrations won't show up again unless manually triggered</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>

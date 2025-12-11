@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import { SongEditor } from "./components/SongEditor"
 import { HelpDialog } from "./components/HelpDialog"
+import { MigrationDialog } from "./components/MigrationDialog"
 import { useAppSelector, useAppDispatch } from "./store/hooks"
 import { setActiveSong, addSong, removeSong } from "./store/songsSlice"
 import guineaFlag from "./assets/guinea-flag.svg"
@@ -299,6 +300,9 @@ export const App = () => {
 
       {/* Help Dialog */}
       <HelpDialog isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+
+      {/* Migration Dialog */}
+      <MigrationDialog />
 
       {/* Main Content with padding for fixed toolbar */}
       <div className="pt-14 sm:pt-16">
