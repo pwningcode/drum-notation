@@ -6,7 +6,7 @@
 import { InstrumentConfig } from '../types';
 import { DEFAULT_INSTRUMENTS } from '../assets/defaultInstruments';
 import { validateInstrumentConfig } from '../utils/instrumentValidation';
-import { INSTRUMENTS_SCHEMA_VERSION } from '../config/schemaVersions';
+import { INSTRUMENTS_SCHEMA_VERSION, MIN_INSTRUMENTS_VERSION, meetsMinimumVersion } from '../config/schemaVersions';
 
 const INSTRUMENTS_STORAGE_KEY = 'drum-notation-instruments';
 const INSTRUMENTS_VERSION = INSTRUMENTS_SCHEMA_VERSION;
@@ -33,6 +33,17 @@ export function loadInstruments(): InstrumentsStorageState {
     }
 
     const parsed = JSON.parse(stored) as InstrumentsStorageState;
+
+    // Check if saved version meets minimum requirements
+    const savedVersion = parsed.version || '1.0.0';
+    if (!meetsMinimumVersion(savedVersion, MIN_INSTRUMENTS_VERSION)) {
+      console.warn(`[Instruments] Saved version ${savedVersion} is below minimum required version ${MIN_INSTRUMENTS_VERSION}. Resetting to defaults.`);
+      localStorage.removeItem(INSTRUMENTS_STORAGE_KEY);
+      return {
+        version: INSTRUMENTS_VERSION,
+        instruments: DEFAULT_INSTRUMENTS
+      };
+    }
 
     // Validate the stored data
     if (!parsed.instruments || !Array.isArray(parsed.instruments)) {

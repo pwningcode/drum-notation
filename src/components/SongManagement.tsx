@@ -56,9 +56,8 @@ export const SongManagement: React.FC = () => {
         };
       }
 
-      // Compare modified dates and content
-      const isModified = userSong.modified !== defaultSong.modified ||
-                        !aresongsEqual(userSong, defaultSong);
+      // Compare content only (ignore modified dates since they may differ even if content is the same)
+      const isModified = !aresongsEqual(userSong, defaultSong);
 
       if (isModified) {
         return {

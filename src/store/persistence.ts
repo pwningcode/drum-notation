@@ -8,7 +8,7 @@ import tiribaSong from '../assets/songs/tiriba.json';
 import { SongsState } from './songsSlice';
 import { Song, LegacySongData } from '../types';
 import { validateSong, isLegacyFormat, migrateLegacySongs } from '../migration';
-import { SONGS_SCHEMA_VERSION } from '../config/schemaVersions';
+import { SONGS_SCHEMA_VERSION, MIN_SONGS_VERSION, meetsMinimumVersion } from '../config/schemaVersions';
 
 const STORAGE_KEY = 'drum-notation-redux-state';
 const CURRENT_VERSION = SONGS_SCHEMA_VERSION;
@@ -37,6 +37,21 @@ export const loadState = (): Partial<RootState> => {
     }
 
     const parsedState = JSON.parse(serializedState);
+
+    // Check if saved version meets minimum requirements
+    const savedVersion = parsedState?.songs?.version || '2.0.0';
+    if (!meetsMinimumVersion(savedVersion, MIN_SONGS_VERSION)) {
+      console.warn(`Saved version ${savedVersion} is below minimum required version ${MIN_SONGS_VERSION}. Resetting to defaults.`);
+      // Clear the old data and return defaults
+      localStorage.removeItem(STORAGE_KEY);
+      return {
+        songs: {
+          songs: defaultSongs,
+          version: CURRENT_VERSION,
+          activeSongId: defaultSongs[0]?.id || '',
+        }
+      };
+    }
 
     // Check if we need to migrate legacy format
     if (parsedState?.songs?.songs && Array.isArray(parsedState.songs.songs)) {

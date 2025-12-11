@@ -38,36 +38,11 @@ export const DEFAULT_INSTRUMENTS: InstrumentConfig[] = [
     modified: DEFAULT_DATE
   },
   {
-    key: 'sangban',
-    name: 'Sangban',
-    description: 'Medium dundun (bass drum) with bell',
-    color: 'text-yellow-500',
-    displayOrder: 1,
-    availableNotes: ['.', 'O', 'M'],
-    cycleOrder: ['.', 'O', 'M'],
-    noteLabels: {
-      '.': 'Rest',
-      'O': 'Open',
-      'M': 'Muted'
-    },
-    noteColors: {
-      '.': 'text-zinc-500',
-      'O': 'text-yellow-300',
-      'M': 'text-gray-400'
-    },
-    noteSymbols: {
-      '.': '·'
-    },
-    flamNotes: [], // Dundun instruments typically don't use flams
-    created: DEFAULT_DATE,
-    modified: DEFAULT_DATE
-  },
-  {
     key: 'kenkeni',
     name: 'Kenkeni',
     description: 'Smallest dundun (bass drum)',
     color: 'text-orange-500',
-    displayOrder: 2,
+    displayOrder: 1,
     availableNotes: ['.', 'O', 'M'],
     cycleOrder: ['.', 'O', 'M'],
     noteLabels: {
@@ -87,6 +62,32 @@ export const DEFAULT_INSTRUMENTS: InstrumentConfig[] = [
     created: DEFAULT_DATE,
     modified: DEFAULT_DATE
   },
+  {
+    key: 'sangban',
+    name: 'Sangban',
+    description: 'Medium dundun (bass drum) with bell',
+    color: 'text-yellow-500',
+    displayOrder: 2,
+    availableNotes: ['.', 'O', 'M'],
+    cycleOrder: ['.', 'O', 'M'],
+    noteLabels: {
+      '.': 'Rest',
+      'O': 'Open',
+      'M': 'Muted'
+    },
+    noteColors: {
+      '.': 'text-zinc-500',
+      'O': 'text-yellow-300',
+      'M': 'text-gray-400'
+    },
+    noteSymbols: {
+      '.': '·'
+    },
+    flamNotes: [], // Dundun instruments typically don't use flams
+    created: DEFAULT_DATE,
+    modified: DEFAULT_DATE
+  },
+  
   {
     key: 'dundunba',
     name: 'Dundunba',
