@@ -1,22 +1,31 @@
 # GitHub Pages Deployment Guide
 
-This guide will help you deploy your drum notation app to GitHub Pages at `drum.fvcsolutions.com`.
+This guide will help you deploy your drum notation app to GitHub Pages at `drumgrid.app`.
 
 ## Prerequisites
 
 1. A GitHub repository with your code
-2. A custom domain `drum.fvcsolutions.com` configured in your DNS settings
+2. A custom domain `drumgrid.app` configured in your DNS settings
 3. GitHub Pages enabled for your repository
 
 ## Configuration Steps
 
+### Switching from `drum.fvcsolutions.com` to `drumgrid.app`
+
+1. Update the `public/CNAME` file in the repository to `drumgrid.app` (committed in this change).
+2. Push the updated code to `main` so GitHub Pages picks up the new CNAME.
+3. In your DNS provider, edit the existing CNAME record to point `drumgrid.app` to `your-username.github.io` (see details below).
+4. In the GitHub repository, go to **Settings** → **Pages** and replace the custom domain with `drumgrid.app`, then click **Save**.
+5. Verify **Enforce HTTPS** is enabled after the certificate is issued for the new domain.
+6. Clear any cached DNS entries locally (`dig`/`nslookup`) if you continue to see the old domain.
+
 ### 1. DNS Configuration
 
-Configure your DNS settings to point `drum.fvcsolutions.com` to GitHub Pages:
+Configure your DNS settings to point `drumgrid.app` to GitHub Pages:
 
 ```
 Type: CNAME
-Name: drum
+Name: @
 Value: your-username.github.io
 ```
 
@@ -37,7 +46,7 @@ Value: your-username.github.io
 ### 3. Custom Domain Setup
 
 1. In your repository settings, go to **Pages**
-2. Under **Custom domain**, enter `drum.fvcsolutions.com`
+2. Under **Custom domain**, enter `drumgrid.app`
 3. Check **Enforce HTTPS** (recommended)
 
 ## Deployment Methods
@@ -49,7 +58,7 @@ The project is configured with GitHub Actions for automatic deployment:
 - **Trigger**: Pushes to the `main` branch
 - **Workflow**: `.github/workflows/deploy.yml`
 - **Output**: Deploys to `gh-pages` branch
-- **Domain**: `drum.fvcsolutions.com`
+- **Domain**: `drumgrid.app`
 
 ### Manual Deployment
 
@@ -88,10 +97,10 @@ export default defineConfig({
 - Builds the project using Node.js 20.18.0
 - Uses official GitHub Pages deployment actions
 - Separates build and deploy into two jobs for better reliability
-- Configures custom domain `drum.fvcsolutions.com`
+- Configures custom domain `drumgrid.app`
 
 ### CNAME File (`public/CNAME`)
-Contains the custom domain: `drum.fvcsolutions.com`
+Contains the custom domain: `drumgrid.app`
 
 ### Package.json Scripts
 ```json
@@ -117,7 +126,7 @@ Contains the custom domain: `drum.fvcsolutions.com`
 ### Custom Domain Issues
 - DNS propagation can take up to 24 hours
 - Verify CNAME record points to `your-username.github.io`
-- Check that the custom domain is properly configured in GitHub Pages settings
+- Check that the custom domain is properly configured in GitHub Pages settings (use `drumgrid.app`)
 
 ### GitHub Actions Permission Issues
 If you see errors like "Permission to [repo] denied to github-actions[bot]":
