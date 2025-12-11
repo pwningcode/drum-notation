@@ -3,16 +3,21 @@ import { SongEditor } from "./components/SongEditor"
 import { HelpDialog } from "./components/HelpDialog"
 import { MigrationDialog } from "./components/MigrationDialog"
 import { useAppSelector, useAppDispatch } from "./store/hooks"
-import { setActiveSong, addSong, removeSong } from "./store/songsSlice"
+import { setActiveSong, addSong, removeSong, applyFocusFilterToSongs } from "./store/songsSlice"
+import { setInstrumentFocus } from "./store/preferencesSlice"
 import guineaFlag from "./assets/guinea-flag.svg"
 
 export const App = () => {
   const dispatch = useAppDispatch()
   const { songs, activeSongId } = useAppSelector((state) => state.songs)
+  const instruments = useAppSelector((state) => state.instruments.instruments)
+  const focusedInstruments = useAppSelector((state) => state.preferences.instrumentFocus)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false)
+  const [welcomeStep, setWelcomeStep] = useState<1 | 2>(1)
+  const [selectedInstruments, setSelectedInstruments] = useState<string[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const activeSong = songs.find((song) => song.id === activeSongId)
@@ -27,12 +32,45 @@ export const App = () => {
     const hasSeenWelcome = localStorage.getItem('hasSeenWelcome')
     if (!hasSeenWelcome) {
       setShowWelcomeDialog(true)
+      // Initialize with all instruments selected by default
+      setSelectedInstruments(instruments.map(i => i.key))
     }
-  }, [])
+  }, [instruments])
 
-  const handleCloseWelcome = () => {
+  const handleToggleInstrument = (instrumentKey: string) => {
+    setSelectedInstruments(prev => {
+      if (prev.includes(instrumentKey)) {
+        // Don't allow removing last instrument
+        if (prev.length === 1) return prev
+        return prev.filter(k => k !== instrumentKey)
+      } else {
+        return [...prev, instrumentKey]
+      }
+    })
+  }
+
+  const handleContinueFromStep1 = () => {
+    setWelcomeStep(2)
+  }
+
+  const handleBackToStep1 = () => {
+    setWelcomeStep(1)
+  }
+
+  const handleCompleteWelcome = () => {
+    // 1. Save preferences
+    dispatch(setInstrumentFocus(selectedInstruments))
+
+    // 2. Apply filter to default songs (hide unfocused tracks)
+    dispatch(applyFocusFilterToSongs({
+      focusedInstruments: selectedInstruments,
+      onlyDefaultSongs: true
+    }))
+
+    // 3. Mark welcome as complete
     localStorage.setItem('hasSeenWelcome', 'true')
     setShowWelcomeDialog(false)
+    setWelcomeStep(1)
   }
 
   // Close dropdown when clicking outside
@@ -64,7 +102,7 @@ export const App = () => {
 
   const handleAddSong = () => {
     const songNumber = songs.length + 1
-    dispatch(addSong({ title: `New Song ${songNumber}` }))
+    dispatch(addSong({ title: `New Song ${songNumber}`, focusedInstruments }))
     setIsDropdownOpen(false)
   }
 
@@ -271,29 +309,101 @@ export const App = () => {
       {/* Welcome Dialog */}
       {showWelcomeDialog && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4">
-          <div className="max-w-lg text-center space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100">
-              Welcome to Drum Notation!
-              </h2>
-              <div className="space-y-3 text-base sm:text-lg text-zinc-300">
-                <p>
-                  Your song edits are stored in your browser's local storage.
-                </p>
-                <p className="text-yellow-400 font-medium">
-                  ⚠️ This data can be lost if you clear your browser data or use a different device.
-                </p>
-                <p>
-                  Please use the <span className="font-semibold text-blue-400">Export</span> button to save your songs as files, and <span className="font-semibold text-blue-400">Import</span> to restore them.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleCloseWelcome}
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white text-lg font-semibold rounded-lg transition-colors"
-            >
-              Got It
-            </button>
+          <div className="max-w-2xl w-full bg-zinc-900 border border-zinc-700 rounded-lg p-6 sm:p-8 space-y-6">
+            {/* Step 1: Data Persistence Warning */}
+            {welcomeStep === 1 && (
+              <>
+                <div className="space-y-4 text-center">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100">
+                    Welcome to Drum Notation!
+                  </h2>
+                  <div className="space-y-3 text-base sm:text-lg text-zinc-300">
+                    <p>
+                      Your song edits are stored in your browser's local storage.
+                    </p>
+                    <p className="text-yellow-400 font-medium">
+                      ⚠️ This data can be lost if you clear your browser data or use a different device.
+                    </p>
+                    <p>
+                      Please use the <span className="font-semibold text-blue-400">Export</span> button to save your songs as files, and <span className="font-semibold text-blue-400">Import</span> to restore them.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleContinueFromStep1}
+                    className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white text-lg font-semibold rounded-lg transition-colors"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Step 2: Instrument Selection */}
+            {welcomeStep === 2 && (
+              <>
+                <div className="space-y-4">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100 text-center">
+                    Choose Your Instruments
+                  </h2>
+                  <p className="text-base text-zinc-300 text-center">
+                    Select which instruments you want to see and use in your notation. You can change this later in Settings.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {instruments
+                    .slice()
+                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                    .map((config) => (
+                      <label
+                        key={config.key}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedInstruments.includes(config.key)
+                            ? 'bg-blue-900/30 border-blue-600'
+                            : 'bg-zinc-800 border-zinc-700 hover:border-zinc-600'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedInstruments.includes(config.key)}
+                          onChange={() => handleToggleInstrument(config.key)}
+                          disabled={selectedInstruments.length === 1 && selectedInstruments.includes(config.key)}
+                          className="w-5 h-5 rounded"
+                        />
+                        <span className={`text-lg font-medium ${config.color || 'text-zinc-100'}`}>
+                          {config.name}
+                        </span>
+                        {config.description && (
+                          <span className="text-sm text-zinc-400 ml-auto">{config.description}</span>
+                        )}
+                      </label>
+                    ))}
+                </div>
+
+                {selectedInstruments.length === 1 && (
+                  <p className="text-sm text-yellow-400 text-center">
+                    At least one instrument must be selected.
+                  </p>
+                )}
+
+                <div className="flex justify-between gap-4">
+                  <button
+                    onClick={handleBackToStep1}
+                    className="px-6 py-3 bg-zinc-700 hover:bg-zinc-600 text-white font-medium rounded-lg transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleCompleteWelcome}
+                    className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white text-lg font-semibold rounded-lg transition-colors"
+                  >
+                    Get Started
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

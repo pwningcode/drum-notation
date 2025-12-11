@@ -2,17 +2,21 @@ import { configureStore } from '@reduxjs/toolkit';
 import songsReducer from './songsSlice';
 import instrumentsReducer from './instrumentsSlice';
 import migrationReducer from './migrationSlice';
+import preferencesReducer from './preferencesSlice';
 import { loadState, saveState } from './persistence';
 import { loadInstruments, saveInstruments } from './instrumentPersistence';
 import { loadMigrationState, saveMigrationState } from './migrationPersistence';
+import { loadPreferences, savePreferences } from './preferencesPersistence';
 import { configureMigrationDetection } from './migrationDetection';
 import { initializeMigration } from './migrationSlice';
+import { initializePreferences } from './preferencesSlice';
 
 const store = configureStore({
   reducer: {
     songs: songsReducer,
     instruments: instrumentsReducer,
     migration: migrationReducer,
+    preferences: preferencesReducer,
   },
 });
 
@@ -30,6 +34,12 @@ store.dispatch({ type: 'instruments/initializeInstruments', payload: instruments
 const migrationState = loadMigrationState();
 if (migrationState && Object.keys(migrationState).length > 0) {
   store.dispatch(initializeMigration(migrationState));
+}
+
+// Load preferences
+const preferencesState = loadPreferences();
+if (preferencesState && Object.keys(preferencesState).length > 0) {
+  store.dispatch(initializePreferences(preferencesState));
 }
 
 // Configure migration detection (checks for version mismatches)
@@ -50,6 +60,9 @@ store.subscribe(() => {
 
   // Save migration state separately
   saveMigrationState(state.migration);
+
+  // Save preferences separately
+  savePreferences(state.preferences);
 });
 
 export { store };

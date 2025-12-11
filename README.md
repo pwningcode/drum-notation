@@ -107,8 +107,6 @@ A web-based drum notation app for West African drums (djembe and dun dun family)
 
 ## Upcoming Features
 
-How do we best handle version updates with schema changes? I do not want to automatically overwrite user instrument or song data; I want the user to be able to choose what to do when new versions or schema changes happen. Also, I think we should have version-to-version specific migrations. Also, import and export is great, but I also want to make overwriting/upgrading easier for the user. Also, I think we should show a dialog if version mismatches are detected that allows the user to migrate/update/overrwite just like we do on the settings page. What do you think?
-
 - Breakup the SongEditor component into the smallest composable/reusable components.
 - Automate version increment (npm script)
 - Instead of 'Download Default' when managing songs; change to overwrite with default

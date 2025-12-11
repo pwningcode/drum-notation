@@ -14,13 +14,14 @@
  * - PATCH: Bug fixes, no schema changes
  */
 
-export const SONGS_SCHEMA_VERSION = '2.1.0';
+export const SONGS_SCHEMA_VERSION = '2.2.0';
 export const INSTRUMENTS_SCHEMA_VERSION = '1.0.0';
 
 /**
  * Change History:
  *
  * SONGS:
+ * - 2.2.0: Added visible (optional) field to InstrumentTrack for track visibility
  * - 2.1.0: Added displayOrder (optional) and links (optional) fields
  * - 2.0.0: Migrated from legacy format
  *

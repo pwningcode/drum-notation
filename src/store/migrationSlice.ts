@@ -5,7 +5,6 @@
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { MigrationAnalysis } from '../migration/migrationEngine';
-import { Song, InstrumentConfig } from '../types';
 
 export interface MigrationRecord {
   fromVersion: string;
@@ -101,7 +100,7 @@ const migrationSlice = createSlice({
     },
 
     // Clear all migration state (for testing)
-    clearMigrationState: (state) => {
+    clearMigrationState: () => {
       return initialState;
     }
   }

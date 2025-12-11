@@ -37,13 +37,21 @@ const songsSlice = createSlice({
       }
     },
 
+    // Set songs (for migrations)
+    setSongs: (state, action: PayloadAction<Song[]>) => {
+      state.songs = action.payload;
+      if (action.payload.length > 0 && !state.activeSongId) {
+        state.activeSongId = action.payload[0].id;
+      }
+    },
+
     // Set active song by ID
     setActiveSong: (state, action: PayloadAction<string>) => {
       state.activeSongId = action.payload;
     },
 
     // Add a new song (or import a complete song)
-    addSong: (state, action: PayloadAction<Partial<Song> & { title: string }>) => {
+    addSong: (state, action: PayloadAction<Partial<Song> & { title: string; focusedInstruments?: string[] }>) => {
       const now = new Date().toISOString();
       const maxDisplayOrder = Math.max(0, ...state.songs.map(s => s.displayOrder ?? 0));
 
@@ -58,6 +66,10 @@ const songsSlice = createSlice({
         state.activeSongId = importedSong.id;
       } else {
         // Create a new song from scratch
+        const focusedInstruments = action.payload.focusedInstruments && action.payload.focusedInstruments.length > 0
+          ? action.payload.focusedInstruments
+          : ['djembe'];  // Fallback to djembe if no focused instruments
+
         const newSong: Song = {
           id: generateId(),
           title: action.payload.title,
@@ -71,11 +83,11 @@ const songsSlice = createSlice({
               measures: [{
                 id: generateId(),
                 timeSignature: { beats: 4, division: 4, divisionType: 'sixteenth' },
-                tracks: [{
+                tracks: focusedInstruments.map(instrument => ({
                   id: generateId(),
-                  instrument: 'djembe',
+                  instrument: instrument as InstrumentKey,
                   notes: Array(16).fill('.')
-                }]
+                }))
               }]
             }
           ],
@@ -112,9 +124,13 @@ const songsSlice = createSlice({
     },
 
     // Add a section (at end or at specific index)
-    addSection: (state, action: PayloadAction<{ songId: string; name: string; tempo?: number; index?: number }>) => {
+    addSection: (state, action: PayloadAction<{ songId: string; name: string; tempo?: number; index?: number; focusedInstruments?: string[] }>) => {
       const song = state.songs.find(s => s.id === action.payload.songId);
       if (song) {
+        const focusedInstruments = action.payload.focusedInstruments && action.payload.focusedInstruments.length > 0
+          ? action.payload.focusedInstruments
+          : ['djembe'];  // Fallback to djembe if no focused instruments
+
         const newSection: Section = {
           id: generateId(),
           name: action.payload.name,
@@ -122,11 +138,11 @@ const songsSlice = createSlice({
           measures: [{
             id: generateId(),
             timeSignature: { beats: 4, division: 4, divisionType: 'sixteenth' },
-            tracks: [{
+            tracks: focusedInstruments.map(instrument => ({
               id: generateId(),
-              instrument: 'djembe',
+              instrument: instrument as InstrumentKey,
               notes: Array(16).fill('.')
-            }]
+            }))
           }]
         };
 
@@ -196,21 +212,25 @@ const songsSlice = createSlice({
     },
 
     // Add a measure to a section
-    addMeasure: (state, action: PayloadAction<{ songId: string; sectionId: string; timeSignature?: TimeSignature; defaultInstrument?: string }>) => {
+    addMeasure: (state, action: PayloadAction<{ songId: string; sectionId: string; timeSignature?: TimeSignature; focusedInstruments?: string[] }>) => {
       const song = state.songs.find(s => s.id === action.payload.songId);
       if (song) {
         const section = song.sections.find(s => s.id === action.payload.sectionId);
         if (section) {
           const timeSig = action.payload.timeSignature || { beats: 4, division: 4, divisionType: 'sixteenth' as const };
           const subdivisions = getSubdivisionsPerBeat(timeSig.divisionType);
+          const focusedInstruments = action.payload.focusedInstruments && action.payload.focusedInstruments.length > 0
+            ? action.payload.focusedInstruments
+            : ['djembe'];  // Fallback to djembe if no focused instruments
+
           const newMeasure: Measure = {
             id: generateId(),
             timeSignature: timeSig,
-            tracks: [{
+            tracks: focusedInstruments.map(instrument => ({
               id: generateId(),
-              instrument: action.payload.defaultInstrument || 'djembe',
+              instrument: instrument as InstrumentKey,
               notes: Array(timeSig.beats * subdivisions).fill('.')
-            }]
+            }))
           };
           section.measures.push(newMeasure);
           song.modified = new Date().toISOString();
@@ -403,6 +423,51 @@ const songsSlice = createSlice({
       }
     },
 
+    // Toggle track visibility
+    toggleTrackVisibility: (state, action: PayloadAction<{ songId: string; sectionId: string; measureId: string; trackId: string }>) => {
+      const song = state.songs.find(s => s.id === action.payload.songId);
+      if (song) {
+        const section = song.sections.find(s => s.id === action.payload.sectionId);
+        if (section) {
+          const measure = section.measures.find(m => m.id === action.payload.measureId);
+          if (measure) {
+            const track = measure.tracks.find(t => t.id === action.payload.trackId);
+            if (track) {
+              // Toggle visibility (undefined or true becomes false, false becomes true)
+              track.visible = track.visible === false ? true : false;
+              song.modified = new Date().toISOString();
+            }
+          }
+        }
+      }
+    },
+
+    // Apply focus filter to songs (hide unfocused instruments)
+    applyFocusFilterToSongs: (state, action: PayloadAction<{ focusedInstruments: string[]; onlyDefaultSongs: boolean }>) => {
+      const { focusedInstruments, onlyDefaultSongs } = action.payload;
+
+      state.songs.forEach(song => {
+        // If onlyDefaultSongs, skip user songs
+        const isDefaultSong = song.id.startsWith('default-');
+        if (onlyDefaultSongs && !isDefaultSong) return;
+
+        // Apply filter to all tracks in all measures
+        song.sections.forEach(section => {
+          section.measures.forEach(measure => {
+            measure.tracks.forEach(track => {
+              // Only modify tracks where visibility hasn't been manually set
+              // (visible === undefined means it hasn't been explicitly set)
+              if (track.visible === undefined) {
+                track.visible = focusedInstruments.includes(track.instrument);
+              }
+            });
+          });
+        });
+
+        song.modified = new Date().toISOString();
+      });
+    },
+
     // Reorder songs (drag and drop)
     reorderSongs: (state, action: PayloadAction<Song[]>) => {
       // Update displayOrder based on new array order
@@ -427,6 +492,7 @@ const songsSlice = createSlice({
 
 export const {
   initializeSongs,
+  setSongs,
   setActiveSong,
   addSong,
   removeSong,
@@ -444,6 +510,8 @@ export const {
   updateTrackNotes,
   updateMeasureTimeSignature,
   updateMeasureNotes,
+  toggleTrackVisibility,
+  applyFocusFilterToSongs,
   reorderSongs,
   resetToDefaults,
 } = songsSlice.actions;

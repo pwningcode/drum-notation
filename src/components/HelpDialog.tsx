@@ -5,6 +5,8 @@ import { InstrumentEditor } from './InstrumentEditor';
 import { InstrumentConfig } from '../types';
 import { useAppSelector, useAppDispatch } from '../store';
 import { setDialogOpen } from '../store/migrationSlice';
+import { setInstrumentFocus } from '../store/preferencesSlice';
+import { applyFocusFilterToSongs } from '../store/songsSlice';
 import { SONGS_SCHEMA_VERSION, INSTRUMENTS_SCHEMA_VERSION } from '../config/schemaVersions';
 
 interface HelpDialogProps {
@@ -20,7 +22,7 @@ interface HelpSection {
 
 type Tab = 'help' | 'settings';
 
-const APP_VERSION = '2.1.0'; // Should match the version in persistence.ts
+const APP_VERSION = '2.2.0'; // Should match the version in persistence.ts
 
 const helpSections: HelpSection[] = [
   {
@@ -188,7 +190,7 @@ const helpSections: HelpSection[] = [
             <h4 className="font-semibold text-zinc-200 mb-2">Adding Measures</h4>
             <p className="text-zinc-300">
               In edit mode, click "Add Measure" within a section to add a new measure at the end.
-              Each measure starts with a single djembe track.
+              Each measure starts with tracks for your focused instruments (configurable in Settings).
             </p>
           </div>
 
@@ -249,6 +251,15 @@ const helpSections: HelpSection[] = [
             <p className="text-zinc-300">
               Optionally add labels to tracks like "Solo 1" or "Part A" to distinguish different parts
               played on the same instrument.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-zinc-200 mb-2">Show/Hide Tracks</h4>
+            <p className="text-zinc-300">
+              In edit mode, use the eye icon next to each track to show or hide it. Hidden tracks
+              are displayed with reduced opacity in edit mode and completely hidden in view mode.
+              Track data is never deleted when hidden - you can always show it again later.
             </p>
           </div>
 
@@ -357,6 +368,8 @@ const helpSections: HelpSection[] = [
 export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
   const dispatch = useAppDispatch();
   const migrationState = useAppSelector(state => state.migration);
+  const instruments = useAppSelector(state => state.instruments.instruments);
+  const focusedInstruments = useAppSelector(state => state.preferences.instrumentFocus);
   const [activeTab, setActiveTab] = useState<Tab>('help');
   const [activeSection, setActiveSection] = useState('getting-started');
   const contentRef = useRef<HTMLDivElement>(null);
@@ -365,6 +378,9 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
   // Instrument editor state
   const [isInstrumentEditorOpen, setIsInstrumentEditorOpen] = useState(false);
   const [editingInstrument, setEditingInstrument] = useState<InstrumentConfig | null>(null);
+
+  // Instrument focus state
+  const [tempFocusedInstruments, setTempFocusedInstruments] = useState<string[]>(focusedInstruments);
 
   useEffect(() => {
     if (isOpen) {
@@ -387,6 +403,47 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
   const handleCloseInstrumentEditor = () => {
     setIsInstrumentEditorOpen(false);
     setEditingInstrument(null);
+  };
+
+  // Sync temp focused instruments when dialog opens or preferences change
+  useEffect(() => {
+    setTempFocusedInstruments(focusedInstruments);
+  }, [focusedInstruments, isOpen]);
+
+  const handleToggleFocusedInstrument = (instrumentKey: string) => {
+    setTempFocusedInstruments(prev => {
+      if (prev.includes(instrumentKey)) {
+        // Don't allow removing last instrument
+        if (prev.length === 1) return prev;
+        return prev.filter(k => k !== instrumentKey);
+      } else {
+        return [...prev, instrumentKey];
+      }
+    });
+  };
+
+  const handleSaveFocus = () => {
+    // Update preferences
+    dispatch(setInstrumentFocus(tempFocusedInstruments));
+
+    // Ask if they want to apply to existing songs
+    const shouldApply = confirm(
+      'Apply new instrument focus to existing songs?\n\n' +
+      'This will hide tracks for unfocused instruments in all songs.\n\n' +
+      'Click OK to apply, or Cancel to only affect new measures.'
+    );
+
+    if (shouldApply) {
+      // Apply filter to ALL songs (not just default songs)
+      dispatch(applyFocusFilterToSongs({
+        focusedInstruments: tempFocusedInstruments,
+        onlyDefaultSongs: false
+      }));
+    }
+  };
+
+  const handleResetFocus = () => {
+    setTempFocusedInstruments(focusedInstruments);
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -498,6 +555,83 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
                     onEditInstrument={handleEditInstrument}
                     onAddInstrument={handleAddInstrument}
                   />
+                </div>
+
+                {/* Instrument Focus */}
+                <div className="border-t border-zinc-700 pt-6">
+                  <h3 className="text-xl font-semibold text-zinc-100 mb-4">Instrument Focus</h3>
+                  <p className="text-zinc-300 mb-4">
+                    Choose which instruments you want to focus on. These instruments will be automatically
+                    added to new measures. You can also choose to hide unfocused instruments from existing songs.
+                  </p>
+
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded p-4 mb-4">
+                    <h4 className="font-semibold text-zinc-200 mb-3">
+                      Select Instruments ({tempFocusedInstruments.length} selected)
+                    </h4>
+                    <div className="space-y-2">
+                      {instruments
+                        .slice()
+                        .sort((a, b) => a.displayOrder - b.displayOrder)
+                        .map((config) => (
+                          <label
+                            key={config.key}
+                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                              tempFocusedInstruments.includes(config.key)
+                                ? 'bg-blue-900/30 border-blue-600'
+                                : 'bg-zinc-800 border-zinc-700 hover:border-zinc-600'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={tempFocusedInstruments.includes(config.key)}
+                              onChange={() => handleToggleFocusedInstrument(config.key)}
+                              disabled={tempFocusedInstruments.length === 1 && tempFocusedInstruments.includes(config.key)}
+                              className="w-5 h-5 rounded"
+                            />
+                            <span className={`text-base font-medium ${config.color || 'text-zinc-100'}`}>
+                              {config.name}
+                            </span>
+                            {config.description && (
+                              <span className="text-sm text-zinc-400 ml-auto">{config.description}</span>
+                            )}
+                          </label>
+                        ))}
+                    </div>
+
+                    {tempFocusedInstruments.length === 1 && (
+                      <p className="text-sm text-yellow-400 mt-3">
+                        At least one instrument must be selected.
+                      </p>
+                    )}
+
+                    <div className="flex gap-3 mt-4">
+                      <button
+                        onClick={handleSaveFocus}
+                        disabled={JSON.stringify(tempFocusedInstruments.slice().sort()) === JSON.stringify(focusedInstruments.slice().sort())}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed text-white rounded text-sm font-medium transition-colors"
+                      >
+                        Save Changes
+                      </button>
+                      <button
+                        onClick={handleResetFocus}
+                        disabled={JSON.stringify(tempFocusedInstruments.slice().sort()) === JSON.stringify(focusedInstruments.slice().sort())}
+                        className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-white rounded text-sm font-medium transition-colors"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-900/20 border border-blue-700 rounded p-4">
+                    <h4 className="font-semibold text-blue-200 mb-2">How Instrument Focus Works</h4>
+                    <ul className="text-sm text-blue-100 space-y-1">
+                      <li>• Focused instruments are automatically added when creating new measures</li>
+                      <li>• You can hide unfocused instruments from existing songs (you'll be asked)</li>
+                      <li>• Track visibility is per-song, so you can customize each song individually</li>
+                      <li>• Hidden tracks are never deleted - use the eye icon in edit mode to show/hide tracks</li>
+                    </ul>
+                  </div>
                 </div>
 
                 {/* Song Management */}

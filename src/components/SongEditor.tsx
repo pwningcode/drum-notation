@@ -30,6 +30,7 @@ import {
   updateMeasureTimeSignature,
   updateMeasureNotes,
   updateSongMetadata,
+  toggleTrackVisibility,
 } from "../store/songsSlice";
 
 /** ---------- Types ---------- */
@@ -484,14 +485,36 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
     }));
   };
 
+  const handleToggleVisibility = () => {
+    dispatch(toggleTrackVisibility({
+      songId,
+      sectionId,
+      measureId: measure.id,
+      trackId: track.id,
+    }));
+  };
+
+  const isHidden = track.visible === false;
+
   return (
     <>
-      <div className="border-t border-zinc-600 first:border-t-0">
+      <div className={`border-t border-zinc-600 first:border-t-0 ${isHidden ? 'opacity-40' : ''}`}>
         <div className="flex items-center justify-between px-1.5 sm:px-2 py-0.5 sm:py-1 bg-zinc-800/30">
-          <span className={`text-[10px] sm:text-xs truncate ${instrumentConfig.color || 'text-zinc-400'}`}>
-            {getInstrumentName(instrumentConfig)}
-            {track.label && ` - ${track.label}`}
-          </span>
+          <div className="flex items-center gap-1 sm:gap-2 flex-1 min-w-0">
+            {editable && (
+              <button
+                onClick={handleToggleVisibility}
+                className="text-zinc-400 hover:text-zinc-200 text-xs sm:text-sm flex-shrink-0"
+                title={isHidden ? "Show track" : "Hide track"}
+              >
+                {isHidden ? '👁️' : '👁️‍🗨️'}
+              </button>
+            )}
+            <span className={`text-[10px] sm:text-xs truncate ${instrumentConfig.color || 'text-zinc-400'}`}>
+              {getInstrumentName(instrumentConfig)}
+              {track.label && ` - ${track.label}`}
+            </span>
+          </div>
           {editable && canRemove && (
             <button
               onClick={handleRemoveTrack}
@@ -866,17 +889,24 @@ const MeasureView: React.FC<MeasureViewProps> = ({
       </div>
 
       {/* Instrument Tracks */}
-      {measure.tracks.map((track) => (
-        <InstrumentTrackView
-          key={track.id}
-          track={track}
-          measure={measure}
-          sectionId={sectionId}
-          songId={songId}
-          editable={editable}
-          canRemove={measure.tracks.length > 1}
-        />
-      ))}
+      {measure.tracks
+        .filter(track => {
+          // In edit mode: show all tracks (including hidden)
+          // In view mode: only show visible tracks
+          if (editable) return true;
+          return track.visible !== false;
+        })
+        .map((track) => (
+          <InstrumentTrackView
+            key={track.id}
+            track={track}
+            measure={measure}
+            sectionId={sectionId}
+            songId={songId}
+            editable={editable}
+            canRemove={measure.tracks.length > 1}
+          />
+        ))}
 
       {/* Add Track Button */}
       {editable && (
@@ -971,8 +1001,7 @@ const SectionView: React.FC<SectionViewProps> = ({
   canRemove,
 }) => {
   const dispatch = useAppDispatch();
-  const allInstruments = useAppSelector(state => state.instruments.instruments);
-  const sortedInstruments = [...allInstruments].sort((a, b) => a.displayOrder - b.displayOrder);
+  const focusedInstruments = useAppSelector(state => state.preferences.instrumentFocus);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingTempo, setIsEditingTempo] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -988,11 +1017,10 @@ const SectionView: React.FC<SectionViewProps> = ({
   };
 
   const handleAddMeasure = () => {
-    const defaultInstrument = sortedInstruments[0]?.key || 'djembe';
     dispatch(addMeasure({
       songId,
       sectionId: section.id,
-      defaultInstrument,
+      focusedInstruments,
     }));
   };
 
@@ -1311,6 +1339,7 @@ const SectionDropZone: React.FC<SectionDropZoneProps> = ({ songId, targetIndex, 
 
 export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
   const dispatch = useAppDispatch();
+  const focusedInstruments = useAppSelector((state) => state.preferences.instrumentFocus);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingTempo, setIsEditingTempo] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -1338,6 +1367,7 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
       songId: song.id,
       name: `Section ${sectionNumber}`,
       index,
+      focusedInstruments,
     }));
   };
 

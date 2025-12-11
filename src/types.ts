@@ -68,6 +68,7 @@ export interface InstrumentTrack {
   instrument: InstrumentKey;     // instrument key (references InstrumentConfig)
   notes: Note[];                 // length = beats * subdivisions
   label?: string;                // optional label like "Solo 1", "Part A"
+  visible?: boolean;             // track visibility (undefined = true for backward compatibility)
 }
 
 // Measure - can contain multiple instrument tracks stacked vertically

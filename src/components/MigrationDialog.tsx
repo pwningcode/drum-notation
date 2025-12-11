@@ -5,7 +5,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../store';
-import { Song, InstrumentConfig } from '../types';
 import {
   setDialogOpen,
   dismissSongVersion,
