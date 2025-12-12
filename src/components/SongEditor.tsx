@@ -16,7 +16,6 @@ import {
   formatFlam,
   getMeasureGridSize,
   getTrackCycleLength,
-  mapCycleToGrid,
   mapGridToCycle,
 } from "../types";
 import {

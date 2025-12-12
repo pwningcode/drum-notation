@@ -32,6 +32,9 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
+    - name: Update service worker version
+      run: node scripts/update-sw-version.js
+      
     - name: Build
       run: npm run build
       

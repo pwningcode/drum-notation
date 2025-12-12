@@ -122,10 +122,16 @@ npm run dev
 
 # Build for production
 npm run build
-
-# Deploy to GitHub Pages
-npm run deploy
 ```
+
+## Deployment
+
+Deployment to GitHub Pages is automatic via GitHub Actions. When you push to the `main` branch:
+1. The service worker cache version is automatically updated
+2. The project is built
+3. The build is deployed to GitHub Pages
+
+No manual deployment steps needed!
 
 ## Data Storage
 

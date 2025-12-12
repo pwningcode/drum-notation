@@ -253,7 +253,7 @@ const songsSlice = createSlice({
             tracks: focusedInstruments.map(instrument => ({
               id: generateId(),
               instrument: instrument as InstrumentKey,
-              notes: Array(timeSig.beats * subdivisions).fill('.')
+              notes: Array((timeSig.beats ?? 4) * subdivisions).fill('.')
             }))
           };
           section.measures.push(newMeasure);
@@ -455,7 +455,7 @@ const songsSlice = createSlice({
             measure.timeSignature = action.payload.timeSignature;
             // Resize all tracks to match new time signature
             const subdivisions = getSubdivisionsPerBeat(action.payload.timeSignature.divisionType);
-            const newLength = action.payload.timeSignature.beats * subdivisions;
+            const newLength = (action.payload.timeSignature.beats ?? 4) * subdivisions;
             measure.tracks.forEach(track => {
               if (track.notes.length < newLength) {
                 while (track.notes.length < newLength) {
@@ -521,7 +521,6 @@ const songsSlice = createSlice({
               // When switching from cycle mode to individual mode, expand notes array
               if (currentMode && !newMode) {
                 const gridSize = getMeasureGridSize(measure);
-                const cycleLength = getTrackCycleLength(track);
                 const expandedNotes: Note[] = [];
 
                 for (let i = 0; i < gridSize; i++) {

@@ -109,8 +109,8 @@ export function convertToLegacyFormat(song: Song): LegacySongData {
   // Get time signature from first measure of first section
   const firstMeasure = introSection?.measures[0];
   const timeSig: LegacyTimeSignature = firstMeasure ? {
-    beats: firstMeasure.timeSignature.beats,
-    division: firstMeasure.timeSignature.division,
+    beats: firstMeasure.timeSignature.beats ?? 4,
+    division: firstMeasure.timeSignature.division ?? 4,
     subdivisions: firstMeasure.timeSignature.divisionType === 'triplet' ? 3 : 4
   } : {
     beats: 4,
@@ -196,7 +196,7 @@ export function migrateToMultiCycle(song: Song): Song {
       measures: section.measures.map(measure => {
         // Calculate default grid size from time signature
         const subdivisions = measure.timeSignature.divisionType === 'triplet' ? 3 : 4;
-        const defaultGridSize = measure.timeSignature.beats * subdivisions;
+        const defaultGridSize = (measure.timeSignature.beats ?? 4) * subdivisions;
 
         return {
           ...measure,

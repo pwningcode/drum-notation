@@ -1,6 +1,8 @@
 // Service Worker for Drum Notation PWA
-const CACHE_NAME = 'drum-notation-v1';
-const RUNTIME_CACHE = 'drum-notation-runtime-v1';
+// Update CACHE_VERSION when deploying a new build to force cache refresh
+const CACHE_VERSION = 'v20251212141258';
+const CACHE_NAME = `drum-notation-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `drum-notation-runtime-${CACHE_VERSION}`;
 
 // Assets to cache on install
 const PRECACHE_ASSETS = [
@@ -25,17 +27,21 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
+      return Promise.all([
+        // Delete all old caches that don't match current version
+        ...cacheNames
           .filter((cacheName) => {
             return cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE;
           })
-          .map((cacheName) => caches.delete(cacheName))
-      );
+          .map((cacheName) => {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }),
+        // Take control of all pages immediately
+        self.clients.claim()
+      ]);
     })
   );
-  // Take control of all pages immediately
-  return self.clients.claim();
 });
 
 // Fetch event - serve from cache, fallback to network
@@ -52,6 +58,26 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
+      // Network-first strategy for HTML to ensure fresh content
+      if (event.request.destination === 'document') {
+        return fetch(event.request)
+          .then((response) => {
+            // Cache the new response
+            if (response && response.status === 200 && response.type === 'basic') {
+              const responseToCache = response.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseToCache);
+              });
+            }
+            return response;
+          })
+          .catch(() => {
+            // Fallback to cache if network fails
+            return cachedResponse || caches.match('/index.html');
+          });
+      }
+
+      // Cache-first strategy for other assets
       if (cachedResponse) {
         return cachedResponse;
       }
