@@ -14,6 +14,10 @@ import {
   getSubdivisionsPerBeat,
   isFlam,
   formatFlam,
+  getMeasureGridSize,
+  getTrackCycleLength,
+  mapCycleToGrid,
+  mapGridToCycle,
 } from "../types";
 import {
   addSection,
@@ -31,7 +35,36 @@ import {
   updateMeasureNotes,
   updateSongMetadata,
   toggleTrackVisibility,
+  toggleCycleEditing,
+  updateTrackCycle,
+  updateMeasureGrid,
 } from "../store/songsSlice";
+
+/** ---------- Helper Functions ---------- */
+
+// Get cycle background class for alternating cycle visualization
+function getCycleBgClass(cycleNumber: number, style: 'subtle' | 'moderate' | 'strong' | 'maximum'): string {
+  switch (style) {
+    case 'subtle':
+    case 'moderate':
+      return '';  // No background, just borders
+
+    case 'strong':
+      // Alternating backgrounds for visual cycle separation
+      return cycleNumber % 2 === 0
+        ? 'bg-blue-900/20'
+        : 'bg-purple-900/20';
+
+    case 'maximum':
+      // Stronger backgrounds
+      return cycleNumber % 2 === 0
+        ? 'bg-blue-900/30'
+        : 'bg-purple-900/30';
+
+    default:
+      return '';
+  }
+}
 
 /** ---------- Types ---------- */
 
@@ -111,17 +144,6 @@ function getColorClass(note: Note, config: InstrumentConfig): string {
   return 'text-zinc-500';
 }
 
-// Get subdivision labels
-function getSubdivisionLabels(divisionType: 'sixteenth' | 'triplet' | 'mixed'): string[] {
-  switch (divisionType) {
-    case 'triplet':
-      return ['1', 'la', 'le'];
-    case 'sixteenth':
-    case 'mixed':
-    default:
-      return ['1', 'e', '&', 'a'];
-  }
-}
 
 // Get instrument display name
 function getInstrumentName(config: InstrumentConfig): string {
@@ -370,9 +392,13 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
   const dispatch = useAppDispatch();
   const instruments = useAppSelector(state => state.instruments.instruments);
   const instrumentConfig = getInstrumentConfig(track.instrument, instruments);
+  const westernNotation = useAppSelector(state => state.preferences.westernNotation);
 
-  const subdivisions = getSubdivisionsPerBeat(measure.timeSignature.divisionType);
-  const beats = measure.timeSignature.beats;
+  // Multi-cycle support: use measure grid size and track cycle length
+  const gridSize = getMeasureGridSize(measure);
+  const cycleLength = getTrackCycleLength(track);
+  const pulsesPerBeat = measure.visualGrid?.pulsesPerBeat ?? getSubdivisionsPerBeat(measure.timeSignature.divisionType);
+  const startOffset = track.startOffset ?? 0;
 
   const [notePickerState, setNotePickerState] = useState<{
     isOpen: boolean;
@@ -383,19 +409,41 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
   const longPressTimerRef = useRef<any | null>(null);
   const pressStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  const handleCellClick = (index: number) => {
+  const handleCellClick = (gridIndex: number) => {
     if (!editable) return;
 
-    const newNotes = [...track.notes];
-    newNotes[index] = getNextNote(newNotes[index], instrumentConfig);
+    const isCycleMode = track.cycleEditingEnabled ?? true;
 
-    dispatch(updateTrackNotes({
-      songId,
-      sectionId,
-      measureId: measure.id,
-      trackId: track.id,
-      notes: newNotes,
-    }));
+    if (isCycleMode) {
+      // Cycle mode: Edit applies to all cycle repetitions
+      const cyclePos = mapGridToCycle(gridIndex, track);
+      if (cyclePos === null) return; // Not editable (outside track's cycle)
+
+      const newNotes = [...track.notes];
+      newNotes[cyclePos] = getNextNote(newNotes[cyclePos], instrumentConfig);
+
+      dispatch(updateTrackNotes({
+        songId,
+        sectionId,
+        measureId: measure.id,
+        trackId: track.id,
+        notes: newNotes,
+      }));
+    } else {
+      // Individual mode: Edit only this specific grid position
+      if (gridIndex < 0 || gridIndex >= track.notes.length) return;
+
+      const newNotes = [...track.notes];
+      newNotes[gridIndex] = getNextNote(newNotes[gridIndex], instrumentConfig);
+
+      dispatch(updateTrackNotes({
+        songId,
+        sectionId,
+        measureId: measure.id,
+        trackId: track.id,
+        notes: newNotes,
+      }));
+    }
   };
 
   const handleMouseDown = (index: number, event: React.MouseEvent) => {
@@ -464,16 +512,39 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
   };
 
   const handleNoteSelect = (note: Note) => {
-    const newNotes = [...track.notes];
-    newNotes[notePickerState.noteIndex] = note;
+    const isCycleMode = track.cycleEditingEnabled ?? true;
 
-    dispatch(updateTrackNotes({
-      songId,
-      sectionId,
-      measureId: measure.id,
-      trackId: track.id,
-      notes: newNotes,
-    }));
+    if (isCycleMode) {
+      // Cycle mode: Edit applies to all cycle repetitions
+      const cyclePos = mapGridToCycle(notePickerState.noteIndex, track);
+      if (cyclePos === null) return; // Invalid position
+
+      const newNotes = [...track.notes];
+      newNotes[cyclePos] = note;
+
+      dispatch(updateTrackNotes({
+        songId,
+        sectionId,
+        measureId: measure.id,
+        trackId: track.id,
+        notes: newNotes,
+      }));
+    } else {
+      // Individual mode: Edit only this specific grid position
+      const gridIndex = notePickerState.noteIndex;
+      if (gridIndex < 0 || gridIndex >= track.notes.length) return;
+
+      const newNotes = [...track.notes];
+      newNotes[gridIndex] = note;
+
+      dispatch(updateTrackNotes({
+        songId,
+        sectionId,
+        measureId: measure.id,
+        trackId: track.id,
+        notes: newNotes,
+      }));
+    }
   };
 
   const handleRemoveTrack = () => {
@@ -494,6 +565,18 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
     }));
   };
 
+  const [showCycleEditor, setShowCycleEditor] = useState(false);
+
+  const handleToggleCycleEditing = () => {
+    dispatch(toggleCycleEditing({
+      songId,
+      sectionId,
+      measureId: measure.id,
+      trackId: track.id,
+    }));
+  };
+
+  const isCycleEditingEnabled = track.cycleEditingEnabled ?? true; // default is true
   const isHidden = track.visible === false;
 
   return (
@@ -514,68 +597,184 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
               {getInstrumentName(instrumentConfig)}
               {track.label && ` - ${track.label}`}
             </span>
-          </div>
-          {editable && canRemove && (
-            <button
-              onClick={handleRemoveTrack}
-              className="text-red-400 hover:text-red-300 text-xs sm:text-sm flex-shrink-0 ml-1"
-              title="Remove track"
-            >
-              ×
-            </button>
-          )}
-        </div>
-        <div className="flex">
-          {Array.from({ length: beats }).map((_, beatIdx) => (
-            <div key={beatIdx} className="flex">
-              {track.notes
-                .slice(beatIdx * subdivisions, (beatIdx + 1) * subdivisions)
-                .map((note, subIdx) => {
-                  const globalIdx = beatIdx * subdivisions + subIdx;
-                  return (
-                    <div
-                      key={globalIdx}
-                      onMouseDown={(e) => handleMouseDown(globalIdx, e)}
-                      onMouseUp={() => handleMouseUp(globalIdx)}
-                      onMouseLeave={handleMouseLeave}
-                      onTouchStart={(e) => handleTouchStart(globalIdx, e)}
-                      onTouchEnd={() => handleTouchEnd(globalIdx)}
-                      className={[
-                        'h-8 w-6 sm:w-10 flex items-center justify-center text-xs sm:text-sm font-semibold',
-                        'border-r border-b border-zinc-600',
-                        editable ? 'cursor-pointer hover:bg-zinc-700/60' : '',
-                        getColorClass(note, instrumentConfig),
-                      ].join(' ')}
-                      title={
-                        isFlam(note)
-                          ? `${note.open ? 'Open' : 'Closed'} Flam: ${note.grace} to ${note.main}`
-                          : note === '.'
-                          ? 'rest'
-                          : note
+            {editable && !showCycleEditor && (
+              <button
+                onClick={() => setShowCycleEditor(true)}
+                className="text-[10px] text-blue-400 hover:text-blue-300 cursor-pointer"
+                title="Click to edit cycle length"
+              >
+                ({cycleLength}p)
+              </button>
+            )}
+            {editable && showCycleEditor && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {/* Common pulse count presets */}
+                {[2, 3, 4, 6, 8, 12, 16, 24, 32, 48].map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={() => {
+                      dispatch(updateTrackCycle({
+                        songId,
+                        sectionId,
+                        measureId: measure.id,
+                        trackId: track.id,
+                        cycleLength: preset,
+                      }));
+                      setShowCycleEditor(false);
+                    }}
+                    className={`px-1.5 py-0.5 text-[10px] rounded border ${
+                      cycleLength === preset
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-zinc-700 border-zinc-600 text-zinc-300 hover:bg-zinc-600'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    const custom = prompt('Enter custom pulse count:', cycleLength.toString());
+                    if (custom && !isNaN(parseInt(custom))) {
+                      const newCycleLength = parseInt(custom);
+                      if (newCycleLength >= 1 && newCycleLength <= 128) {
+                        dispatch(updateTrackCycle({
+                          songId,
+                          sectionId,
+                          measureId: measure.id,
+                          trackId: track.id,
+                          cycleLength: newCycleLength,
+                        }));
                       }
-                    >
-                      {symbolFor(note, instrumentConfig)}
-                    </div>
-                  );
-                })}
-              {beatIdx < beats - 1 && (
-                <div className="w-1 bg-zinc-800" />
-              )}
-            </div>
-          ))}
+                    }
+                    setShowCycleEditor(false);
+                  }}
+                  className="px-1.5 py-0.5 text-[10px] rounded border bg-zinc-700 border-zinc-600 text-zinc-300 hover:bg-zinc-600"
+                >
+                  Custom
+                </button>
+                <button
+                  onClick={() => setShowCycleEditor(false)}
+                  className="text-[10px] text-red-400 hover:text-red-300 ml-1"
+                  title="Cancel"
+                >
+                  ✗
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {editable && (
+              <button
+                onClick={handleToggleCycleEditing}
+                className={`px-1.5 py-0.5 text-[10px] rounded border flex-shrink-0 ${
+                  isCycleEditingEnabled
+                    ? 'bg-purple-600 border-purple-500 text-white'
+                    : 'bg-zinc-700 border-zinc-600 text-zinc-300'
+                }`}
+                title={isCycleEditingEnabled ? "Cycle Mode: Edits apply to all cycles" : "Individual Mode: Edit each note separately"}
+              >
+                {isCycleEditingEnabled ? '🔁' : '1️⃣'}
+              </button>
+            )}
+            {editable && canRemove && (
+              <button
+                onClick={handleRemoveTrack}
+                className="text-red-400 hover:text-red-300 text-xs sm:text-sm flex-shrink-0"
+                title="Remove track"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Single pulse loop grid rendering (cycles-first) */}
+        <div className="flex flex-wrap">
+          {Array.from({ length: gridSize }).map((_, pulseIdx) => {
+            // Determine note based on cycle editing mode
+            const isCycleMode = track.cycleEditingEnabled ?? true;
+            let note: Note | null;
+            let isEditable: boolean;
+            let isCycleBoundary = false;
+
+            if (isCycleMode) {
+              // Cycle mode: Map grid position to track cycle position
+              const cyclePos = mapGridToCycle(pulseIdx, track);
+              note = cyclePos !== null && cyclePos < track.notes.length ? track.notes[cyclePos] : null;
+              isEditable = cyclePos !== null;
+              // Check if this is a cycle boundary (for visual indicator)
+              isCycleBoundary = cyclePos === 0 && pulseIdx > startOffset;
+            } else {
+              // Individual mode: Direct index into notes array
+              note = pulseIdx < track.notes.length ? track.notes[pulseIdx] : null;
+              isEditable = pulseIdx < track.notes.length;
+              // No cycle boundaries in individual mode
+              isCycleBoundary = false;
+            }
+
+            // Calculate cycle number for background coloring
+            const cycleNumber = Math.floor((pulseIdx - startOffset) / cycleLength);
+
+            // Beat boundary border for Western notation
+            const isBeatBoundary = westernNotation.enabled &&
+                                   westernNotation.showBeatGroupings &&
+                                   pulseIdx % pulsesPerBeat === 0 &&
+                                   pulseIdx > 0;
+
+            // Responsive wrapping: insert line break every 16 pulses on mobile
+            const shouldWrap = pulseIdx > 0 && pulseIdx % 16 === 0;
+
+            return (
+              <React.Fragment key={pulseIdx}>
+                {shouldWrap && <div className="w-full h-0 sm:hidden" />}
+                <div
+                  onMouseDown={(e) => isEditable && handleMouseDown(pulseIdx, e)}
+                  onMouseUp={() => isEditable && handleMouseUp(pulseIdx)}
+                  onMouseLeave={handleMouseLeave}
+                  onTouchStart={(e) => isEditable && handleTouchStart(pulseIdx, e)}
+                  onTouchEnd={() => isEditable && handleTouchEnd(pulseIdx)}
+                  className={[
+                    'h-8 w-6 sm:w-10 flex items-center justify-center text-xs sm:text-sm font-semibold',
+                    'border-r border-b border-zinc-600',
+                    isEditable && editable ? 'cursor-pointer hover:bg-zinc-700/60' : 'bg-zinc-800/50',
+                    isCycleBoundary && measure.visualGrid?.showCycleGuides ? 'border-l-4 border-l-blue-400' : '',
+                    getCycleBgClass(cycleNumber, westernNotation.cycleGuideStyle),
+                    isBeatBoundary ? 'border-l-2 border-l-zinc-500' : '',
+                    note ? getColorClass(note, instrumentConfig) : 'text-zinc-500',
+                  ].join(' ')}
+                  title={
+                    !isEditable
+                      ? 'outside track cycle'
+                      : note && isFlam(note)
+                      ? `${note.open ? 'Open' : 'Closed'} Flam: ${note.grace} to ${note.main}`
+                      : note === '.' || note === null
+                      ? 'rest'
+                      : note ? String(note) : 'rest'
+                  }
+                >
+                  {note ? symbolFor(note, instrumentConfig) : '·'}
+                </div>
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 
       {/* Note Picker Dialog */}
-      {notePickerState.isOpen && notePickerState.noteIndex >= 0 && (
-        <NotePickerDialog
-          isOpen={notePickerState.isOpen}
-          onClose={() => setNotePickerState({ ...notePickerState, isOpen: false })}
-          currentNote={track.notes[notePickerState.noteIndex]}
-          instrumentConfig={instrumentConfig}
-          onSelectNote={handleNoteSelect}
-        />
-      )}
+      {notePickerState.isOpen && notePickerState.noteIndex >= 0 && (() => {
+        // Map grid index to cycle position to get the correct note
+        const cyclePos = mapGridToCycle(notePickerState.noteIndex, track);
+        const currentNote = cyclePos !== null && cyclePos < track.notes.length ? track.notes[cyclePos] : '.';
+        return (
+          <NotePickerDialog
+            isOpen={notePickerState.isOpen}
+            onClose={() => setNotePickerState({ ...notePickerState, isOpen: false })}
+            currentNote={currentNote}
+            instrumentConfig={instrumentConfig}
+            onSelectNote={handleNoteSelect}
+          />
+        );
+      })()}
     </>
   );
 };
@@ -669,12 +868,20 @@ const MeasureView: React.FC<MeasureViewProps> = ({
   const dispatch = useAppDispatch();
   const allInstruments = useAppSelector(state => state.instruments.instruments);
   const instruments = [...allInstruments].sort((a, b) => a.displayOrder - b.displayOrder);
+  const westernNotation = useAppSelector(state => state.preferences.westernNotation);
   const [showAddTrack, setShowAddTrack] = useState(false);
   const [showTimeSignature, setShowTimeSignature] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(measure.notes || '');
-  const beats = measure.timeSignature.beats;
-  const subLabels = getSubdivisionLabels(measure.timeSignature.divisionType);
+
+  // Multi-cycle support: use flexible grid size
+  const gridSize = getMeasureGridSize(measure);
+  const pulsesPerBeat = measure.visualGrid?.pulsesPerBeat ?? getSubdivisionsPerBeat(measure.timeSignature.divisionType);
+
+  // Determine counting style from time signature's division type (user-controlled feel)
+  const subLabels = measure.timeSignature.divisionType === 'triplet'
+    ? ['1', 'la', 'le']
+    : ['1', 'e', '&', 'a'];
 
   const handleRemoveMeasure = () => {
     dispatch(removeMeasure({
@@ -712,13 +919,13 @@ const MeasureView: React.FC<MeasureViewProps> = ({
     setShowAddTrack(false);
   };
 
-  const handleTimeSignatureChange = (beats: number, divisionType: 'sixteenth' | 'triplet') => {
+  const handleDivisionTypeChange = (divisionType: 'sixteenth' | 'triplet') => {
     dispatch(updateMeasureTimeSignature({
       songId,
       sectionId,
       measureId: measure.id,
       timeSignature: {
-        beats,
+        beats: measure.timeSignature.beats, // preserve for backward compatibility
         division: 4,
         divisionType,
         feel: measure.timeSignature.feel, // preserve current feel
@@ -738,6 +945,20 @@ const MeasureView: React.FC<MeasureViewProps> = ({
     }));
   };
 
+  const handleToggleCycleGuides = () => {
+    const currentGuides = measure.visualGrid?.showCycleGuides ?? false;
+    dispatch(updateMeasureGrid({
+      songId,
+      sectionId,
+      measureId: measure.id,
+      visualGrid: {
+        pulses: gridSize,
+        pulsesPerBeat,
+        showCycleGuides: !currentGuides,
+      },
+    }));
+  };
+
   const handleSaveNotes = () => {
     dispatch(updateMeasureNotes({
       songId,
@@ -747,10 +968,6 @@ const MeasureView: React.FC<MeasureViewProps> = ({
     }));
     setIsEditingNotes(false);
   };
-
-  const currentDivisionType = measure.timeSignature.divisionType === 'mixed'
-    ? 'sixteenth'
-    : measure.timeSignature.divisionType;
 
   return (
     <div
@@ -771,11 +988,11 @@ const MeasureView: React.FC<MeasureViewProps> = ({
               onClick={() => setShowTimeSignature(!showTimeSignature)}
               className="text-[10px] sm:text-xs text-zinc-400 hover:text-zinc-300 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-zinc-600 hover:border-zinc-500"
             >
-              {beats}/4 · {measure.timeSignature.divisionType === 'sixteenth' ? '16' : measure.timeSignature.divisionType === 'triplet' ? '3' : measure.timeSignature.divisionType}
+              {measure.timeSignature.divisionType === 'sixteenth' ? '16ths' : measure.timeSignature.divisionType === 'triplet' ? 'Triplets' : measure.timeSignature.divisionType}
             </button>
           ) : (
             <span className="text-[10px] sm:text-xs text-zinc-500">
-              {beats}/4 · {measure.timeSignature.divisionType === 'sixteenth' ? '16' : measure.timeSignature.divisionType === 'triplet' ? '3' : measure.timeSignature.divisionType}
+              {measure.timeSignature.divisionType === 'sixteenth' ? '16ths' : measure.timeSignature.divisionType === 'triplet' ? 'Triplets' : measure.timeSignature.divisionType}
             </span>
           )}
           {measure.timeSignature.feel && measure.timeSignature.feel !== 'straight' && (
@@ -806,48 +1023,32 @@ const MeasureView: React.FC<MeasureViewProps> = ({
         )}
       </div>
 
-      {/* Time Signature Editor */}
+      {/* Time Signature Editor (Cycles-First: Only Division Type & Feel) */}
       {editable && showTimeSignature && (
         <div className="px-3 py-2 bg-zinc-800/30 border-b border-zinc-700 space-y-2">
           <div className="flex gap-2 items-center flex-wrap">
-            <span className="text-xs text-zinc-400">Beats:</span>
-            {[2, 3, 4, 6].map((b) => (
-              <button
-                key={b}
-                onClick={() => handleTimeSignatureChange(b, currentDivisionType)}
-                className={`px-2 py-1 text-xs rounded ${
-                  beats === b
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
-                }`}
-              >
-                {b}
-              </button>
-            ))}
-            <span className="text-xs text-zinc-400 ml-2">Division:</span>
+            <span className="text-xs text-zinc-400">Feel:</span>
             <button
-              onClick={() => handleTimeSignatureChange(beats, 'sixteenth')}
+              onClick={() => handleDivisionTypeChange('sixteenth')}
               className={`px-2 py-1 text-xs rounded ${
                 measure.timeSignature.divisionType === 'sixteenth'
                   ? 'bg-blue-600 text-white'
                   : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
               }`}
             >
-              16ths
+              16ths (1 e & a)
             </button>
             <button
-              onClick={() => handleTimeSignatureChange(beats, 'triplet')}
+              onClick={() => handleDivisionTypeChange('triplet')}
               className={`px-2 py-1 text-xs rounded ${
                 measure.timeSignature.divisionType === 'triplet'
                   ? 'bg-blue-600 text-white'
                   : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
               }`}
             >
-              Triplets
+              Triplets (1 la le)
             </button>
-          </div>
-          <div className="flex gap-2 items-center flex-wrap">
-            <span className="text-xs text-zinc-400">Feel:</span>
+            <span className="text-xs text-zinc-400 ml-2">Feel:</span>
             {['straight', 'swing', 'half-time', 'double-time'].map((f) => (
               <button
                 key={f}
@@ -861,32 +1062,85 @@ const MeasureView: React.FC<MeasureViewProps> = ({
                 {f}
               </button>
             ))}
+            <span className="text-xs text-zinc-400 ml-2">Cycle Guides:</span>
+            <button
+              onClick={handleToggleCycleGuides}
+              className={`px-2 py-1 text-xs rounded ${
+                measure.visualGrid?.showCycleGuides
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
+              }`}
+              title="Show cycle boundary markers"
+            >
+              {measure.visualGrid?.showCycleGuides ? 'ON' : 'OFF'}
+            </button>
           </div>
         </div>
       )}
 
-      {/* Subdivision Labels */}
-      <div className="flex border-b border-zinc-700 bg-zinc-900/50">
-        {Array.from({ length: beats }).map((_, beatIdx) => (
-          <div key={beatIdx} className="flex">
-            {subLabels.map((lbl, subIdx) => (
-              <div
-                key={`${beatIdx}-${subIdx}`}
-                className={[
-                  'h-5 sm:h-6 w-6 sm:w-10 flex items-center justify-center text-[10px] sm:text-xs',
-                  'border-r border-zinc-600',
-                  lbl === '1' ? 'font-bold text-zinc-300' : 'text-zinc-500',
-                ].join(' ')}
-              >
-                {lbl === '1' ? beatIdx + 1 : lbl}
-              </div>
-            ))}
-            {beatIdx < beats - 1 && (
-              <div className="w-1" />
-            )}
-          </div>
-        ))}
-      </div>
+      {/* Subdivision Labels - Cycles-First (spans entire LCM grid) */}
+      {westernNotation.enabled && westernNotation.showSubdivisionLabels && (
+        <div className="flex flex-wrap border-b border-zinc-700 bg-zinc-900/50">
+          {Array.from({ length: gridSize }).map((_, pulseIdx) => {
+            // Calculate which subdivision label to show (repeating pattern across entire grid)
+            const labelIdx = pulseIdx % subLabels.length;
+            const lbl = subLabels[labelIdx];
+
+            // Calculate which beat number this pulse belongs to (for display)
+            const beatNumber = Math.floor(pulseIdx / pulsesPerBeat) + 1;
+
+            // Beat boundary border (visual separator when Western notation enabled)
+            const isBeatBoundary = westernNotation.showBeatGroupings && pulseIdx % pulsesPerBeat === 0 && pulseIdx > 0;
+
+            // Responsive wrapping: insert line break every 16 pulses on mobile
+            const shouldWrap = pulseIdx > 0 && pulseIdx % 16 === 0;
+
+            return (
+              <React.Fragment key={pulseIdx}>
+                {shouldWrap && <div className="w-full h-0 sm:hidden" />}
+                <div
+                  className={[
+                    'h-5 sm:h-6 w-6 sm:w-10 flex items-center justify-center text-[10px] sm:text-xs',
+                    'border-r border-zinc-600',
+                    lbl === '1' ? 'font-bold text-zinc-300' : 'text-zinc-500',
+                    isBeatBoundary ? 'border-l-2 border-l-zinc-500' : '',
+                  ].join(' ')}
+                >
+                  {lbl === '1' ? beatNumber : lbl}
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pulse Numbers - Cycles-First (when Western notation is OFF) */}
+      {!westernNotation.enabled && (
+        <div className="flex flex-wrap border-b border-zinc-700 bg-zinc-900/50">
+          {Array.from({ length: gridSize }).map((_, pulseIdx) => {
+            // Show pulse number every 4 pulses (on the beat)
+            const showNumber = pulseIdx % 4 === 0;
+
+            // Responsive wrapping: insert line break every 16 pulses on mobile
+            const shouldWrap = pulseIdx > 0 && pulseIdx % 16 === 0;
+
+            return (
+              <React.Fragment key={pulseIdx}>
+                {shouldWrap && <div className="w-full h-0 sm:hidden" />}
+                <div
+                  className={[
+                    'h-5 sm:h-6 w-6 sm:w-10 flex items-center justify-center text-[10px] sm:text-xs',
+                    'border-r border-zinc-600',
+                    showNumber ? 'font-bold text-zinc-300' : 'text-zinc-600',
+                  ].join(' ')}
+                >
+                  {showNumber ? pulseIdx : '·'}
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      )}
 
       {/* Instrument Tracks */}
       {measure.tracks
@@ -1409,7 +1663,7 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 text-zinc-100">
+    <div className="px-2 sm:px-4 space-y-4 sm:space-y-6 text-zinc-100">
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="flex-1">

@@ -182,3 +182,45 @@ export function validateSong(song: any): song is Song {
     Array.isArray(song.sections)
   );
 }
+
+/**
+ * Migrates a song to support multi-cycle format.
+ * Adds visualGrid to measures and cycleLength/startOffset to tracks.
+ * This is a non-destructive migration - all existing data is preserved.
+ */
+export function migrateToMultiCycle(song: Song): Song {
+  return {
+    ...song,
+    sections: song.sections.map(section => ({
+      ...section,
+      measures: section.measures.map(measure => {
+        // Calculate default grid size from time signature
+        const subdivisions = measure.timeSignature.divisionType === 'triplet' ? 3 : 4;
+        const defaultGridSize = measure.timeSignature.beats * subdivisions;
+
+        return {
+          ...measure,
+          // Add visualGrid if not present
+          visualGrid: measure.visualGrid ?? {
+            pulses: defaultGridSize,
+            pulsesPerBeat: subdivisions,
+            showCycleGuides: false,
+          },
+          tracks: measure.tracks.map(track => ({
+            ...track,
+            // Add cycle properties if not present
+            cycleLength: track.cycleLength ?? track.notes.length,
+            startOffset: track.startOffset ?? 0,
+          })),
+        };
+      }),
+    })),
+  };
+}
+
+/**
+ * Migrates multiple songs to multi-cycle format
+ */
+export function migrateAllToMultiCycle(songs: Song[]): Song[] {
+  return songs.map(migrateToMultiCycle);
+}

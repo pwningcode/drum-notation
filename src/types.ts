@@ -52,9 +52,9 @@ export type Feel =
   | 'double-time'; // double-time feel
 
 export interface TimeSignature {
-  beats: number;               // 2, 3, 4, etc.
-  division: number;            // always 4 for x/4 time
-  divisionType: DivisionType;  // sixteenth, triplet, or mixed
+  beats?: number;              // DEPRECATED: kept for backward compatibility only (calculated from grid/pulsesPerBeat)
+  division?: number;           // DEPRECATED: kept for backward compatibility only (always 4 for x/4 time)
+  divisionType: DivisionType;  // sixteenth (1 e & a), triplet (1 la le), or mixed
   feel?: Feel;                 // optional feel/groove (straight, swing, shuffle, etc.)
 }
 
@@ -66,9 +66,12 @@ export interface TimeSignature {
 export interface InstrumentTrack {
   id: string;                    // unique identifier
   instrument: InstrumentKey;     // instrument key (references InstrumentConfig)
-  notes: Note[];                 // length = beats * subdivisions
+  notes: Note[];                 // length = cycleLength (cycle mode) or full grid size (individual mode)
   label?: string;                // optional label like "Solo 1", "Part A"
   visible?: boolean;             // track visibility (undefined = true for backward compatibility)
+  cycleLength?: number;          // pulses in this track's cycle (defaults to notes.length for backward compatibility)
+  startOffset?: number;          // start position in measure grid (default: 0)
+  cycleEditingEnabled?: boolean; // if true (default), editing applies to all cycle repetitions; if false, edit individual notes
 }
 
 // Measure - can contain multiple instrument tracks stacked vertically
@@ -77,6 +80,12 @@ export interface Measure {
   timeSignature: TimeSignature;
   tracks: InstrumentTrack[];     // multiple instruments stacked
   notes?: string;                // optional notes/description for this measure
+  visualGrid?: {                 // visual grid configuration for multi-cycle support
+    pulses: number;              // total pulses to display (e.g., 48 for LCM of 12 and 16)
+    pulsesPerBeat?: number;      // grouping for display (default: 4 for 16th feel)
+    showCycleGuides?: boolean;   // show visual cycle boundary markers
+    locked?: boolean;            // prevents automatic LCM recalculation
+  };
 }
 
 // ============================================================================
@@ -182,4 +191,77 @@ export function formatFlam(flam: FlamType): string {
   const graceSymbol = flam.grace.toLowerCase();
   const separator = flam.open ? '-' : '';
   return `${graceSymbol}${separator}${flam.main}`;
+}
+
+// ============================================================================
+// Multi-Cycle Support Helper Functions
+// ============================================================================
+
+/**
+ * Get the visual grid size for a measure.
+ * Falls back to beats × subdivisions for backward compatibility.
+ */
+export function getMeasureGridSize(measure: Measure): number {
+  if (measure.visualGrid) {
+    return measure.visualGrid.pulses;
+  }
+  // Backward compatible: beats × subdivisions (if beats is defined)
+  if (measure.timeSignature.beats) {
+    const subdivisions = getSubdivisionsPerBeat(measure.timeSignature.divisionType);
+    return measure.timeSignature.beats * subdivisions;
+  }
+  // Default fallback: 16 pulses (4/4 with sixteenths)
+  return 16;
+}
+
+/**
+ * Get the effective cycle length for a track.
+ * Falls back to notes.length for backward compatibility.
+ */
+export function getTrackCycleLength(track: InstrumentTrack): number {
+  return track.cycleLength ?? track.notes.length;
+}
+
+/**
+ * Map track cycle position to measure grid position.
+ */
+export function mapCycleToGrid(cycleIndex: number, track: InstrumentTrack): number {
+  const startOffset = track.startOffset ?? 0;
+  return startOffset + cycleIndex;
+}
+
+/**
+ * Map measure grid position to track cycle position (for editing).
+ * Returns null if the grid position is outside the track's active range.
+ */
+export function mapGridToCycle(gridIndex: number, track: InstrumentTrack): number | null {
+  const cycleLength = getTrackCycleLength(track);
+  const startOffset = track.startOffset ?? 0;
+  const relativePos = gridIndex - startOffset;
+
+  if (relativePos < 0) return null;  // Before track starts
+
+  return relativePos % cycleLength;
+}
+
+/**
+ * Calculate the least common multiple (LCM) of two numbers.
+ */
+export function calculateLCM(a: number, b: number): number {
+  const gcd = (x: number, y: number): number => (y === 0 ? x : gcd(y, x % y));
+  return (a * b) / gcd(a, b);
+}
+
+/**
+ * Auto-calculate visual grid size from all track cycles using LCM.
+ */
+export function calculateMeasureGridSize(tracks: InstrumentTrack[]): number {
+  if (tracks.length === 0) return 16; // Default
+
+  let lcm = getTrackCycleLength(tracks[0]);
+  for (let i = 1; i < tracks.length; i++) {
+    lcm = calculateLCM(lcm, getTrackCycleLength(tracks[i]));
+  }
+
+  return lcm;
 }

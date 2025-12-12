@@ -5,9 +5,10 @@ import yankadiSong from '../assets/songs/yankadi.json';
 import soliSong from '../assets/songs/soli.json';
 import kukuSong from '../assets/songs/kuku.json';
 import tiribaSong from '../assets/songs/tiriba.json';
+import kassaMultiCycleSong from '../assets/songs/kassa-multi-cycle.json';
 import { SongsState } from './songsSlice';
 import { Song, LegacySongData } from '../types';
-import { validateSong, isLegacyFormat, migrateLegacySongs } from '../migration';
+import { validateSong, isLegacyFormat, migrateLegacySongs, migrateAllToMultiCycle } from '../migration';
 import { SONGS_SCHEMA_VERSION, MIN_SONGS_VERSION, meetsMinimumVersion } from '../config/schemaVersions';
 
 const STORAGE_KEY = 'drum-notation-redux-state';
@@ -90,10 +91,13 @@ export const loadState = (): Partial<RootState> => {
           // Return user's data as-is - migration dialog will offer options
         }
 
-        // All songs are valid, return with displayOrder
+        // Apply multi-cycle migration to ensure all songs have the new fields
+        const migratedSongs = migrateAllToMultiCycle(songsWithOrder);
+
+        // All songs are valid, return with displayOrder and migrations applied
         return {
           songs: {
-            songs: songsWithOrder,
+            songs: migratedSongs,
             version: parsedState.songs.version,
             activeSongId: parsedState.songs.activeSongId
           }
@@ -155,7 +159,8 @@ export function loadDefaultSongs(): Song[] {
       yankadiSong,
       soliSong,
       kukuSong,
-      tiribaSong
+      tiribaSong,
+      kassaMultiCycleSong
     ] as any[];
 
     // Check if default songs are in legacy format
@@ -169,18 +174,22 @@ export function loadDefaultSongs(): Song[] {
 
     if (validSongs.length === songs.length) {
       // Add displayOrder to songs that don't have it
-      return (validSongs as Song[]).map((song, index) => ({
+      const songsWithOrder = (validSongs as Song[]).map((song, index) => ({
         ...song,
         displayOrder: song.displayOrder ?? index
       }));
+      // Apply multi-cycle migration
+      return migrateAllToMultiCycle(songsWithOrder);
     } else {
       console.warn('Some default songs failed validation');
       // Return only valid songs, or create a default if none are valid
       const songsToReturn = validSongs.length > 0 ? validSongs as Song[] : [createDefaultSong()];
-      return songsToReturn.map((song, index) => ({
+      const songsWithOrder = songsToReturn.map((song, index) => ({
         ...song,
         displayOrder: song.displayOrder ?? index
       }));
+      // Apply multi-cycle migration
+      return migrateAllToMultiCycle(songsWithOrder);
     }
   } catch (error) {
     console.error('Error loading default songs:', error);

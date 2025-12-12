@@ -4,7 +4,7 @@ import { HelpDialog } from "./components/HelpDialog"
 import { MigrationDialog } from "./components/MigrationDialog"
 import { useAppSelector, useAppDispatch } from "./store/hooks"
 import { setActiveSong, addSong, removeSong, applyFocusFilterToSongs } from "./store/songsSlice"
-import { setInstrumentFocus } from "./store/preferencesSlice"
+import { setInstrumentFocus, toggleWesternNotation } from "./store/preferencesSlice"
 import guineaFlag from "./assets/guinea-flag.svg"
 
 export const App = () => {
@@ -12,6 +12,7 @@ export const App = () => {
   const { songs, activeSongId } = useAppSelector((state) => state.songs)
   const instruments = useAppSelector((state) => state.instruments.instruments)
   const focusedInstruments = useAppSelector((state) => state.preferences.instrumentFocus)
+  const westernNotation = useAppSelector((state) => state.preferences.westernNotation)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
@@ -155,7 +156,7 @@ export const App = () => {
     <div className="min-h-screen bg-gray-900">
       {/* Fixed Toolbar */}
       <div className="fixed top-0 left-0 right-0 bg-zinc-800 border-b border-zinc-700 shadow-lg z-50">
-        <div className="container mx-auto px-2 sm:px-4">
+        <div className="px-2 sm:px-4">
           <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Left: Logo and Song Selector */}
             <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
@@ -282,6 +283,21 @@ export const App = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     )}
+                  </button>
+
+                  {/* Western Notation Toggle */}
+                  <button
+                    onClick={() => dispatch(toggleWesternNotation())}
+                    className={`p-2 rounded-md flex items-center font-medium mr-1 ${
+                      westernNotation.enabled
+                        ? 'bg-purple-600 hover:bg-purple-500 text-white border border-purple-500'
+                        : 'bg-zinc-900 border border-zinc-600 hover:bg-zinc-700 text-zinc-300'
+                    }`}
+                    title={westernNotation.enabled ? 'Hide Western Notation (Cycles Only)' : 'Show Western Notation (Beats & Labels)'}
+                  >
+                    <span className="text-sm font-bold">
+                      {westernNotation.enabled ? 'ABC' : '123'}
+                    </span>
                   </button>
                 </>
               )}
@@ -416,7 +432,7 @@ export const App = () => {
 
       {/* Main Content with padding for fixed toolbar */}
       <div className="pt-14 sm:pt-16">
-        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        <div className="px-2 sm:px-4 py-4 sm:py-8">
           {activeSong ? (
             <SongEditor song={activeSong} isEditing={isEditing} />
           ) : (

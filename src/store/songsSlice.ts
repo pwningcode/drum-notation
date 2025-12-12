@@ -8,7 +8,11 @@ import {
   InstrumentKey,
   TimeSignature,
   generateId,
-  getSubdivisionsPerBeat
+  getSubdivisionsPerBeat,
+  getMeasureGridSize,
+  getTrackCycleLength,
+  calculateMeasureGridSize,
+  mapGridToCycle
 } from '../types';
 import { loadDefaultSongs } from './persistence';
 
@@ -23,6 +27,26 @@ const initialState: SongsState = {
   version: '2.1.0',
   activeSongId: '',
 };
+
+/**
+ * Auto-recalculate measure grid size from track cycles using LCM.
+ * Only runs if grid is not locked.
+ */
+function autoRecalculateGridIfUnlocked(measure: Measure): void {
+  if (measure.visualGrid?.locked === true) {
+    return;  // Grid is locked, don't auto-recalc
+  }
+
+  const gridSize = calculateMeasureGridSize(measure.tracks);
+  const subdivisions = getSubdivisionsPerBeat(measure.timeSignature.divisionType);
+
+  measure.visualGrid = {
+    pulses: gridSize,
+    pulsesPerBeat: subdivisions,
+    showCycleGuides: measure.visualGrid?.showCycleGuides ?? true,
+    locked: false,
+  };
+}
 
 const songsSlice = createSlice({
   name: 'songs',
@@ -324,21 +348,56 @@ const songsSlice = createSlice({
     },
 
     // Add a track to a measure
-    addTrack: (state, action: PayloadAction<{ songId: string; sectionId: string; measureId: string; instrument: InstrumentKey; label?: string }>) => {
+    addTrack: (state, action: PayloadAction<{
+      songId: string;
+      sectionId: string;
+      measureId: string;
+      instrument: InstrumentKey;
+      label?: string;
+      cycleLength?: number;  // Optional custom cycle length
+    }>) => {
       const song = state.songs.find(s => s.id === action.payload.songId);
       if (song) {
         const section = song.sections.find(s => s.id === action.payload.sectionId);
         if (section) {
           const measure = section.measures.find(m => m.id === action.payload.measureId);
           if (measure) {
-            const subdivisions = getSubdivisionsPerBeat(measure.timeSignature.divisionType);
+            // Smart default cycle length:
+            // 1. Use explicitly provided cycle length
+            // 2. Check if same instrument already exists in measure
+            // 3. Inherit from previous track (last track in measure)
+            // 4. Fall back to 12 pulses (common default)
+            const existingTrack = measure.tracks.find(t => t.instrument === action.payload.instrument);
+            const previousTrack = measure.tracks.length > 0 ? measure.tracks[measure.tracks.length - 1] : null;
+            let cycleLength: number;
+
+            if (action.payload.cycleLength !== undefined) {
+              // User explicitly specified cycle length
+              cycleLength = action.payload.cycleLength;
+            } else if (existingTrack) {
+              // Use cycle length from existing track with same instrument
+              cycleLength = getTrackCycleLength(existingTrack);
+            } else if (previousTrack) {
+              // Inherit from previous track
+              cycleLength = getTrackCycleLength(previousTrack);
+            } else {
+              // Fall back to 12 pulses (common default for West African rhythms)
+              cycleLength = 12;
+            }
+
             const newTrack: InstrumentTrack = {
               id: generateId(),
               instrument: action.payload.instrument,
               label: action.payload.label,
-              notes: Array(measure.timeSignature.beats * subdivisions).fill('.')
+              notes: Array(cycleLength).fill('.'),
+              cycleLength: action.payload.cycleLength,  // Store if explicitly provided
+              startOffset: 0,
             };
             measure.tracks.push(newTrack);
+
+            // Auto-recalculate grid size if unlocked
+            autoRecalculateGridIfUnlocked(measure);
+
             song.modified = new Date().toISOString();
           }
         }
@@ -356,6 +415,10 @@ const songsSlice = createSlice({
             const index = measure.tracks.findIndex(t => t.id === action.payload.trackId);
             if (index !== -1) {
               measure.tracks.splice(index, 1);
+
+              // Auto-recalculate grid size if unlocked
+              autoRecalculateGridIfUnlocked(measure);
+
               song.modified = new Date().toISOString();
             }
           }
@@ -442,6 +505,62 @@ const songsSlice = createSlice({
       }
     },
 
+    // Toggle cycle editing mode
+    toggleCycleEditing: (state, action: PayloadAction<{ songId: string; sectionId: string; measureId: string; trackId: string }>) => {
+      const song = state.songs.find(s => s.id === action.payload.songId);
+      if (song) {
+        const section = song.sections.find(s => s.id === action.payload.sectionId);
+        if (section) {
+          const measure = section.measures.find(m => m.id === action.payload.measureId);
+          if (measure) {
+            const track = measure.tracks.find(t => t.id === action.payload.trackId);
+            if (track) {
+              const currentMode = track.cycleEditingEnabled ?? true; // default is true
+              const newMode = !currentMode;
+
+              // When switching from cycle mode to individual mode, expand notes array
+              if (currentMode && !newMode) {
+                const gridSize = getMeasureGridSize(measure);
+                const cycleLength = getTrackCycleLength(track);
+                const expandedNotes: Note[] = [];
+
+                for (let i = 0; i < gridSize; i++) {
+                  const cyclePos = mapGridToCycle(i, track);
+                  if (cyclePos !== null && cyclePos < track.notes.length) {
+                    expandedNotes.push(track.notes[cyclePos]);
+                  } else {
+                    expandedNotes.push('.');
+                  }
+                }
+                track.notes = expandedNotes;
+              }
+
+              // When switching from individual mode to cycle mode, compress notes array
+              if (!currentMode && newMode) {
+                const cycleLength = track.cycleLength ?? track.notes.length;
+                const startOffset = track.startOffset ?? 0;
+
+                // Extract just the first cycle from the expanded notes
+                const cycleNotes: Note[] = [];
+                for (let i = 0; i < cycleLength; i++) {
+                  const gridIdx = startOffset + i;
+                  if (gridIdx < track.notes.length) {
+                    cycleNotes.push(track.notes[gridIdx]);
+                  } else {
+                    cycleNotes.push('.');
+                  }
+                }
+                track.notes = cycleNotes;
+              }
+
+              track.cycleEditingEnabled = newMode;
+              song.modified = new Date().toISOString();
+            }
+          }
+        }
+      }
+    },
+
     // Apply focus filter to songs (hide unfocused instruments)
     applyFocusFilterToSongs: (state, action: PayloadAction<{ focusedInstruments: string[]; onlyDefaultSongs: boolean }>) => {
       const { focusedInstruments, onlyDefaultSongs } = action.payload;
@@ -487,6 +606,127 @@ const songsSlice = createSlice({
       state.songs = defaultSongs;
       state.activeSongId = defaultSongs[0]?.id || '';
     },
+
+    // Update track cycle configuration
+    updateTrackCycle: (state, action: PayloadAction<{
+      songId: string;
+      sectionId: string;
+      measureId: string;
+      trackId: string;
+      cycleLength?: number;
+      startOffset?: number;
+    }>) => {
+      const song = state.songs.find(s => s.id === action.payload.songId);
+      if (song) {
+        const section = song.sections.find(s => s.id === action.payload.sectionId);
+        if (section) {
+          const measure = section.measures.find(m => m.id === action.payload.measureId);
+          if (measure) {
+            const track = measure.tracks.find(t => t.id === action.payload.trackId);
+            if (track) {
+              const oldCycleLength = getTrackCycleLength(track);
+              const newCycleLength = action.payload.cycleLength ?? oldCycleLength;
+
+              // Resize notes array if cycle length changed
+              if (newCycleLength !== oldCycleLength) {
+                const newNotes: Note[] = Array(newCycleLength).fill('.');
+                // Copy existing notes up to min length
+                const copyLength = Math.min(oldCycleLength, newCycleLength);
+                for (let i = 0; i < copyLength; i++) {
+                  newNotes[i] = track.notes[i];
+                }
+                track.notes = newNotes;
+              }
+
+              track.cycleLength = action.payload.cycleLength;
+              track.startOffset = action.payload.startOffset;
+
+              // Auto-recalculate grid size if unlocked
+              autoRecalculateGridIfUnlocked(measure);
+
+              song.modified = new Date().toISOString();
+            }
+          }
+        }
+      }
+    },
+
+    // Update measure visual grid
+    updateMeasureGrid: (state, action: PayloadAction<{
+      songId: string;
+      sectionId: string;
+      measureId: string;
+      visualGrid: {
+        pulses: number;
+        pulsesPerBeat?: number;
+        showCycleGuides?: boolean;
+      };
+    }>) => {
+      const song = state.songs.find(s => s.id === action.payload.songId);
+      if (song) {
+        const section = song.sections.find(s => s.id === action.payload.sectionId);
+        if (section) {
+          const measure = section.measures.find(m => m.id === action.payload.measureId);
+          if (measure) {
+            // Auto-lock when manually setting grid size
+            measure.visualGrid = {
+              ...action.payload.visualGrid,
+              locked: true,
+            };
+            song.modified = new Date().toISOString();
+          }
+        }
+      }
+    },
+
+    // Auto-calculate measure grid from tracks
+    autoCalculateMeasureGrid: (state, action: PayloadAction<{
+      songId: string;
+      sectionId: string;
+      measureId: string;
+    }>) => {
+      const song = state.songs.find(s => s.id === action.payload.songId);
+      if (song) {
+        const section = song.sections.find(s => s.id === action.payload.sectionId);
+        if (section) {
+          const measure = section.measures.find(m => m.id === action.payload.measureId);
+          if (measure) {
+            const gridSize = calculateMeasureGridSize(measure.tracks);
+            const subdivisions = getSubdivisionsPerBeat(measure.timeSignature.divisionType);
+            measure.visualGrid = {
+              pulses: gridSize,
+              pulsesPerBeat: subdivisions,
+              showCycleGuides: true,
+            };
+            song.modified = new Date().toISOString();
+          }
+        }
+      }
+    },
+
+    // Toggle measure grid lock/unlock
+    toggleMeasureGridLock: (state, action: PayloadAction<{
+      songId: string;
+      sectionId: string;
+      measureId: string;
+    }>) => {
+      const song = state.songs.find(s => s.id === action.payload.songId);
+      if (song) {
+        const section = song.sections.find(s => s.id === action.payload.sectionId);
+        if (section) {
+          const measure = section.measures.find(m => m.id === action.payload.measureId);
+          if (measure) {
+            measure.visualGrid = measure.visualGrid || {
+              pulses: getMeasureGridSize(measure),
+              pulsesPerBeat: getSubdivisionsPerBeat(measure.timeSignature.divisionType),
+              showCycleGuides: true,
+            };
+            measure.visualGrid.locked = !measure.visualGrid.locked;
+            song.modified = new Date().toISOString();
+          }
+        }
+      }
+    },
   },
 });
 
@@ -511,9 +751,14 @@ export const {
   updateMeasureTimeSignature,
   updateMeasureNotes,
   toggleTrackVisibility,
+  toggleCycleEditing,
   applyFocusFilterToSongs,
   reorderSongs,
   resetToDefaults,
+  updateTrackCycle,
+  updateMeasureGrid,
+  autoCalculateMeasureGrid,
+  toggleMeasureGridLock,
 } = songsSlice.actions;
 
 export default songsSlice.reducer;

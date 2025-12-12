@@ -8,11 +8,27 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface PreferencesState {
   version: string;
   instrumentFocus: string[];  // Array of InstrumentKeys user wants to focus on
+  lastUsedCycles?: Record<string, number>;  // Track last-used cycle length per instrument
+  westernNotation: {  // Western notation display preferences
+    enabled: boolean;
+    showBeatGroupings: boolean;
+    showSubdivisionLabels: boolean;
+    showTimeSignature: boolean;
+    cycleGuideStyle: 'subtle' | 'moderate' | 'strong' | 'maximum';
+  };
 }
 
 const initialState: PreferencesState = {
   version: '1.0.0',
   instrumentFocus: ['djembe'],  // Default for backward compatibility
+  lastUsedCycles: {},  // Empty by default, will be populated as user sets cycles
+  westernNotation: {  // OFF by default for new users (cycles-first approach)
+    enabled: false,
+    showBeatGroupings: true,
+    showSubdivisionLabels: true,
+    showTimeSignature: true,
+    cycleGuideStyle: 'strong',
+  },
 };
 
 const preferencesSlice = createSlice({
@@ -53,6 +69,29 @@ const preferencesSlice = createSlice({
       }
     },
 
+    // Update last used cycle length for an instrument
+    setLastUsedCycle: (state, action: PayloadAction<{ instrument: string; cycleLength: number }>) => {
+      if (!state.lastUsedCycles) {
+        state.lastUsedCycles = {};
+      }
+      state.lastUsedCycles[action.payload.instrument] = action.payload.cycleLength;
+    },
+
+    // Toggle Western notation on/off
+    toggleWesternNotation: (state) => {
+      state.westernNotation.enabled = !state.westernNotation.enabled;
+    },
+
+    // Update Western notation options
+    setWesternNotationOptions: (state, action: PayloadAction<Partial<PreferencesState['westernNotation']>>) => {
+      state.westernNotation = { ...state.westernNotation, ...action.payload };
+    },
+
+    // Set cycle guide style
+    setCycleGuideStyle: (state, action: PayloadAction<'subtle' | 'moderate' | 'strong' | 'maximum'>) => {
+      state.westernNotation.cycleGuideStyle = action.payload;
+    },
+
     // Reset preferences to defaults
     resetPreferences: () => {
       return initialState;
@@ -69,6 +108,10 @@ export const {
   initializePreferences,
   setInstrumentFocus,
   toggleInstrumentFocus,
+  setLastUsedCycle,
+  toggleWesternNotation,
+  setWesternNotationOptions,
+  setCycleGuideStyle,
   resetPreferences,
   clearPreferences
 } = preferencesSlice.actions;
