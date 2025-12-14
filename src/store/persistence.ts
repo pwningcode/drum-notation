@@ -209,7 +209,7 @@ function createDefaultSong(): Song {
       name: 'Intro',
       measures: [{
         id: `${Date.now()}-measure`,
-        timeSignature: { beats: 4, division: 4, divisionType: 'sixteenth' },
+        timeSignature: { divisionType: 'sixteenth' },
         tracks: [{
           id: `${Date.now()}-track`,
           instrument: 'djembe',

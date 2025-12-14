@@ -106,7 +106,7 @@ const songsSlice = createSlice({
               name: 'Intro',
               measures: [{
                 id: generateId(),
-                timeSignature: { beats: 4, division: 4, divisionType: 'sixteenth' },
+                timeSignature: { divisionType: 'sixteenth' },
                 tracks: focusedInstruments.map(instrument => ({
                   id: generateId(),
                   instrument: instrument as InstrumentKey,
@@ -131,6 +131,20 @@ const songsSlice = createSlice({
         if (state.activeSongId === action.payload && state.songs.length > 0) {
           state.activeSongId = state.songs[0].id;
         }
+      }
+    },
+
+    // Replace a song with new data (preserves displayOrder)
+    replaceSong: (state, action: PayloadAction<{ id: string; song: Song }>) => {
+      const index = state.songs.findIndex(s => s.id === action.payload.id);
+      if (index !== -1) {
+        const currentDisplayOrder = state.songs[index].displayOrder;
+        state.songs[index] = {
+          ...action.payload.song,
+          id: action.payload.id, // Keep the original ID
+          displayOrder: currentDisplayOrder, // Preserve display order
+          modified: new Date().toISOString()
+        };
       }
     },
 
@@ -161,7 +175,7 @@ const songsSlice = createSlice({
           tempo: action.payload.tempo,
           measures: [{
             id: generateId(),
-            timeSignature: { beats: 4, division: 4, divisionType: 'sixteenth' },
+            timeSignature: { divisionType: 'sixteenth' },
             tracks: focusedInstruments.map(instrument => ({
               id: generateId(),
               instrument: instrument as InstrumentKey,
@@ -253,7 +267,7 @@ const songsSlice = createSlice({
             tracks: focusedInstruments.map(instrument => ({
               id: generateId(),
               instrument: instrument as InstrumentKey,
-              notes: Array((timeSig.beats ?? 4) * subdivisions).fill('.')
+              notes: Array(4 * subdivisions).fill('.') // 4 beats default
             }))
           };
           section.measures.push(newMeasure);
@@ -455,7 +469,7 @@ const songsSlice = createSlice({
             measure.timeSignature = action.payload.timeSignature;
             // Resize all tracks to match new time signature
             const subdivisions = getSubdivisionsPerBeat(action.payload.timeSignature.divisionType);
-            const newLength = (action.payload.timeSignature.beats ?? 4) * subdivisions;
+            const newLength = 4 * subdivisions; // 4 beats default
             measure.tracks.forEach(track => {
               if (track.notes.length < newLength) {
                 while (track.notes.length < newLength) {
@@ -735,6 +749,7 @@ export const {
   setActiveSong,
   addSong,
   removeSong,
+  replaceSong,
   updateSongMetadata,
   addSection,
   moveSection,

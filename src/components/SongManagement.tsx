@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { Song } from '../types';
-import { resetToDefaults, reorderSongs } from '../store/songsSlice';
+import { resetToDefaults, reorderSongs, replaceSong, addSong } from '../store/songsSlice';
 import kassaSong from '../assets/songs/kassa.json';
 import sofaSong from '../assets/songs/sofa.json';
 import sinteSong from '../assets/songs/sinte.json';
@@ -78,15 +78,20 @@ export const SongManagement: React.FC = () => {
   }, [sortedUserSongs, defaultSongs]);
 
   const handleRestoreDefault = (song: SongComparisonResult) => {
-    if (song.defaultSong) {
-      const dataStr = JSON.stringify(song.defaultSong, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-      const exportFileDefaultName = `${song.defaultSong.title.toLowerCase().replace(/\s+/g, '-')}.json`;
+    if (song.defaultSong && song.userSong) {
+      const confirmed = window.confirm(
+        `Are you sure you want to overwrite "${song.title}" with the default version?\n\n` +
+        'This will permanently replace your modified version. Consider exporting it first as a backup.\n\n' +
+        'This action cannot be undone!'
+      );
 
-      const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', exportFileDefaultName);
-      linkElement.click();
+      if (confirmed) {
+        // Replace the user's modified song with the default version
+        dispatch(replaceSong({
+          id: song.userSong.id,
+          song: song.defaultSong
+        }));
+      }
     }
   };
 
@@ -99,6 +104,39 @@ export const SongManagement: React.FC = () => {
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
+  };
+
+  const handleImportSong = (songToReplace?: Song) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const importedSong = JSON.parse(event.target?.result as string) as Song;
+
+            if (songToReplace) {
+              // Replace existing song
+              dispatch(replaceSong({
+                id: songToReplace.id,
+                song: importedSong
+              }));
+            } else {
+              // Add as new song
+              dispatch(addSong(importedSong));
+            }
+          } catch (error) {
+            alert('Error importing song: Invalid JSON file');
+            console.error('Import error:', error);
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
   };
 
   const upToDateCount = songComparison.filter(s => s.status === 'up-to-date').length;
@@ -155,8 +193,15 @@ export const SongManagement: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Reset to Defaults Button */}
-      <div className="flex justify-end">
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => handleImportSong()}
+          className="px-3 py-1.5 text-xs bg-blue-900/30 hover:bg-blue-900/50 text-blue-400 border border-blue-700 rounded"
+          title="Import a new song from file"
+        >
+          Import
+        </button>
         <button
           onClick={handleResetToDefaults}
           className="px-3 py-1.5 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-700 rounded"
@@ -214,20 +259,33 @@ export const SongManagement: React.FC = () => {
                   <button
                     onClick={() => handleRestoreDefault(song)}
                     className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-medium rounded transition-colors"
-                    title="Download the default version of this song"
+                    title="Overwrite your modified version with the default song"
                   >
-                    Download Default
+                    Overwrite
                   </button>
                 )}
 
                 {song.userSong && (
-                  <button
-                    onClick={() => handleExportSong(song.userSong!)}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded transition-colors"
-                    title="Export your version as backup"
-                  >
-                    Export
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleImportSong(song.userSong!)}
+                      className="p-2 bg-blue-900/30 hover:bg-blue-600 border border-blue-700 rounded transition-colors text-blue-400"
+                      title="Import and replace this song from file"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleExportSong(song.userSong!)}
+                      className="p-2 bg-emerald-900/30 hover:bg-emerald-600 border border-emerald-700 rounded transition-colors text-emerald-400"
+                      title="Export this song as backup"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -239,8 +297,7 @@ export const SongManagement: React.FC = () => {
         <div className="bg-yellow-900/20 border border-yellow-700 rounded p-4">
           <p className="text-sm text-yellow-200">
             <strong>Note:</strong> Songs marked as "Modified" have been changed from their defaults.
-            You can download the default version and then import it to restore the original, or export
-            your version as a backup before making any changes.
+            You can click "Overwrite" to restore the default version, or export your version as a backup before making any changes.
           </p>
         </div>
       )}

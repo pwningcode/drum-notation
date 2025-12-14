@@ -71,8 +71,6 @@ function createMeasureFromLegacy(
   return {
     id: generateId(),
     timeSignature: {
-      beats: timeSig.beats,
-      division: timeSig.division || 4,
       divisionType
     },
     tracks: [
@@ -109,8 +107,8 @@ export function convertToLegacyFormat(song: Song): LegacySongData {
   // Get time signature from first measure of first section
   const firstMeasure = introSection?.measures[0];
   const timeSig: LegacyTimeSignature = firstMeasure ? {
-    beats: firstMeasure.timeSignature.beats ?? 4,
-    division: firstMeasure.timeSignature.division ?? 4,
+    beats: 4, // Default to 4/4 time
+    division: 4,
     subdivisions: firstMeasure.timeSignature.divisionType === 'triplet' ? 3 : 4
   } : {
     beats: 4,
@@ -194,9 +192,9 @@ export function migrateToMultiCycle(song: Song): Song {
     sections: song.sections.map(section => ({
       ...section,
       measures: section.measures.map(measure => {
-        // Calculate default grid size from time signature
+        // Calculate default grid size from time signature (assuming 4/4 time)
         const subdivisions = measure.timeSignature.divisionType === 'triplet' ? 3 : 4;
-        const defaultGridSize = (measure.timeSignature.beats ?? 4) * subdivisions;
+        const defaultGridSize = 4 * subdivisions; // 4 beats default
 
         return {
           ...measure,

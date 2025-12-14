@@ -924,10 +924,8 @@ const MeasureView: React.FC<MeasureViewProps> = ({
       sectionId,
       measureId: measure.id,
       timeSignature: {
-        beats: measure.timeSignature.beats, // preserve for backward compatibility
-        division: 4,
         divisionType,
-        feel: measure.timeSignature.feel, // preserve current feel
+        feel: measure.timeSignature.feel,
       },
     }));
   };

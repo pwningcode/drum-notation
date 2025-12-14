@@ -114,43 +114,6 @@ export const App = () => {
     }
   }
 
-  const handleExportSong = () => {
-    if (activeSong) {
-      const dataStr = JSON.stringify(activeSong, null, 2)
-      const dataBlob = new Blob([dataStr], { type: 'application/json' })
-      const url = URL.createObjectURL(dataBlob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${activeSong.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`
-      link.click()
-      URL.revokeObjectURL(url)
-    }
-    setIsDropdownOpen(false)
-  }
-
-  const handleImportSong = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'application/json'
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          try {
-            const songData = JSON.parse(event.target?.result as string)
-            dispatch(addSong(songData))
-            setIsDropdownOpen(false)
-          } catch (error) {
-            console.error('Error importing song:', error)
-            alert('Failed to import song. Please check the file format.')
-          }
-        }
-        reader.readAsText(file)
-      }
-    }
-    input.click()
-  }
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -225,30 +188,6 @@ export const App = () => {
             <div className="flex items-center gap-1 sm:gap-3">
               {activeSong && (
                 <>
-                  {!isEditing && (
-                    <>
-                      <button
-                        onClick={handleImportSong}
-                        className="p-2 bg-zinc-900 border border-zinc-600 rounded-md flex items-center hover:bg-zinc-700 text-zinc-300"
-                        title="Import Song"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={handleExportSong}
-                        className="p-2 bg-zinc-900 border border-zinc-600 rounded-md flex items-center hover:bg-zinc-700 text-zinc-300"
-                        title="Export Song"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                      </button>
-
-                    </>
-                  )}
-
                   {isEditing && (
                     <>
                       <button
@@ -341,7 +280,7 @@ export const App = () => {
                       ⚠️ This data can be lost if you clear your browser data or use a different device.
                     </p>
                     <p>
-                      Please use the <span className="font-semibold text-blue-400">Export</span> button to save your songs as files, and <span className="font-semibold text-blue-400">Import</span> to restore them.
+                      Please use the <span className="font-semibold text-blue-400">Song Management</span> section in Settings to export and import your songs as backup files.
                     </p>
                   </div>
                 </div>

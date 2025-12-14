@@ -52,8 +52,6 @@ export type Feel =
   | 'double-time'; // double-time feel
 
 export interface TimeSignature {
-  beats?: number;              // DEPRECATED: kept for backward compatibility only (calculated from grid/pulsesPerBeat)
-  division?: number;           // DEPRECATED: kept for backward compatibility only (always 4 for x/4 time)
   divisionType: DivisionType;  // sixteenth (1 e & a), triplet (1 la le), or mixed
   feel?: Feel;                 // optional feel/groove (straight, swing, shuffle, etc.)
 }
@@ -199,16 +197,11 @@ export function formatFlam(flam: FlamType): string {
 
 /**
  * Get the visual grid size for a measure.
- * Falls back to beats × subdivisions for backward compatibility.
+ * Returns visualGrid.pulses or defaults to 16 pulses (4/4 with sixteenths).
  */
 export function getMeasureGridSize(measure: Measure): number {
   if (measure.visualGrid) {
     return measure.visualGrid.pulses;
-  }
-  // Backward compatible: beats × subdivisions (if beats is defined)
-  if (measure.timeSignature.beats) {
-    const subdivisions = getSubdivisionsPerBeat(measure.timeSignature.divisionType);
-    return measure.timeSignature.beats * subdivisions;
   }
   // Default fallback: 16 pulses (4/4 with sixteenths)
   return 16;

@@ -12,8 +12,6 @@
         {
           "id": "kassa-multi-measure-1",
           "timeSignature": {
-            "beats": 4,
-            "division": 4,
             "divisionType": "sixteenth"
           },
           "visualGrid": {
