@@ -64,7 +64,7 @@ interface NoteConfig {
   character: string;
   label: string;
   color: string;
-  symbol?: string;
+  description?: string;
 }
 
 export const InstrumentEditor: React.FC<InstrumentEditorProps> = ({
@@ -84,39 +84,112 @@ export const InstrumentEditor: React.FC<InstrumentEditorProps> = ({
   const [cycleOrder, setCycleOrder] = useState<string[]>([]);
   const [flamNotes, setFlamNotes] = useState<string[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [draggedNoteIndex, setDraggedNoteIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    if (initialConfig) {
-      setKey(initialConfig.key);
-      setName(initialConfig.name);
-      setDescription(initialConfig.description || '');
-      setInstrumentColor(initialConfig.color || 'text-emerald-500');
+    if (isOpen) {
+      if (initialConfig) {
+        setKey(initialConfig.key);
+        setName(initialConfig.name);
+        setDescription(initialConfig.description || '');
+        setInstrumentColor(initialConfig.color || 'text-emerald-500');
 
-      // Convert to NoteConfig format
-      const noteConfigs: NoteConfig[] = initialConfig.availableNotes.map(char => ({
-        character: char,
-        label: initialConfig.noteLabels[char] || char,
-        color: initialConfig.noteColors[char] || 'text-zinc-500',
-        symbol: initialConfig.noteSymbols?.[char],
-      }));
-      setNotes(noteConfigs);
-      setCycleOrder(initialConfig.cycleOrder);
-      setFlamNotes(initialConfig.flamNotes);
-    } else {
-      // Default for new instrument
-      setKey('');
-      setName('');
-      setDescription('');
-      setInstrumentColor('text-emerald-500');
-      setNotes([{ character: '.', label: 'Rest', color: 'text-zinc-500', symbol: '·' }]);
-      setCycleOrder(['.']);
-      setFlamNotes([]);
+        // Convert to NoteConfig format
+        const noteConfigs: NoteConfig[] = initialConfig.availableNotes.map(char => ({
+          character: char,
+          label: initialConfig.noteLabels[char] || char,
+          color: initialConfig.noteColors[char] || 'text-zinc-500',
+          description: '',
+        }));
+        setNotes(noteConfigs);
+        setCycleOrder(initialConfig.cycleOrder);
+        setFlamNotes(initialConfig.flamNotes);
+      } else {
+        // Default for new instrument
+        setKey('');
+        setName('');
+        setDescription('');
+        setInstrumentColor('text-emerald-500');
+        setNotes([{ character: '.', label: 'Rest', color: 'text-zinc-500', description: 'Rest / no stroke' }]);
+        setCycleOrder(['.']);
+        setFlamNotes([]); // Empty for new instrument, will be set when notes are added
+      }
+      setErrors([]);
+
+      // Prevent body scroll when dialog is open (iOS-friendly approach)
+      const scrollY = window.scrollY;
+      const html = document.documentElement;
+      const body = document.body;
+
+      // Store original styles
+      const originalHtmlOverflow = html.style.overflow;
+      const originalBodyOverflow = body.style.overflow;
+      const originalBodyPosition = body.style.position;
+      const originalBodyTop = body.style.top;
+      const originalBodyWidth = body.style.width;
+      const originalBodyHeight = body.style.height;
+
+      // Lock scroll on both html and body
+      html.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
+      body.style.position = 'fixed';
+      body.style.top = `-${scrollY}px`;
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.width = '100%';
+      body.style.height = '100%';
+
+      return () => {
+        // Restore original styles
+        html.style.overflow = originalHtmlOverflow;
+        body.style.overflow = originalBodyOverflow;
+        body.style.position = originalBodyPosition;
+        body.style.top = originalBodyTop;
+        body.style.width = originalBodyWidth;
+        body.style.height = originalBodyHeight;
+        body.style.left = '';
+        body.style.right = '';
+
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
+      };
     }
-    setErrors([]);
   }, [initialConfig, isOpen]);
 
   const handleAddNote = () => {
-    setNotes([...notes, { character: '', label: '', color: 'text-zinc-500' }]);
+    setNotes([...notes, { character: '', label: '', color: 'text-zinc-500', description: '' }]);
+  };
+
+  const handleNoteDragStart = (index: number) => {
+    setDraggedNoteIndex(index);
+  };
+
+  const handleNoteDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleNoteDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedNoteIndex === null || draggedNoteIndex === dropIndex) {
+      setDraggedNoteIndex(null);
+      return;
+    }
+
+    const reordered = [...notes];
+    const [removed] = reordered.splice(draggedNoteIndex, 1);
+    reordered.splice(dropIndex, 0, removed);
+
+    setNotes(reordered);
+
+    // Update cycle order to match new note order
+    const newCycleOrder = reordered.map(n => n.character).filter(c => c.length > 0);
+    setCycleOrder(newCycleOrder);
+
+    setDraggedNoteIndex(null);
+  };
+
+  const handleNoteDragEnd = () => {
+    setDraggedNoteIndex(null);
   };
 
   const handleRemoveNote = (index: number) => {
@@ -152,22 +225,16 @@ export const InstrumentEditor: React.FC<InstrumentEditorProps> = ({
     const availableNotes = notes.map(n => n.character).filter(c => c.length > 0);
     const noteLabels: Record<string, string> = {};
     const noteColors: Record<string, string> = {};
-    const noteSymbols: Record<string, string> = {};
 
     notes.forEach(note => {
       if (note.character) {
         noteLabels[note.character] = note.label || note.character;
         noteColors[note.character] = note.color;
-        if (note.symbol && note.symbol !== note.character) {
-          noteSymbols[note.character] = note.symbol;
-        }
       }
     });
 
-    // Use cycleOrder if valid, otherwise default to availableNotes order
-    const finalCycleOrder = cycleOrder.length === availableNotes.length
-      ? cycleOrder
-      : availableNotes;
+    // Cycle order is based on note order (drag to reorder)
+    const finalCycleOrder = availableNotes;
 
     // For new instruments, set displayOrder to be after all existing instruments
     const displayOrder = isEditing
@@ -184,7 +251,7 @@ export const InstrumentEditor: React.FC<InstrumentEditorProps> = ({
       cycleOrder: finalCycleOrder,
       noteLabels,
       noteColors,
-      noteSymbols: Object.keys(noteSymbols).length > 0 ? noteSymbols : undefined,
+      noteSymbols: initialConfig?.noteSymbols, // Preserve existing symbols if any
       flamNotes: flamNotes.filter(c => availableNotes.includes(c)),
       created: initialConfig?.created || new Date().toISOString(),
       modified: new Date().toISOString(),
@@ -205,11 +272,6 @@ export const InstrumentEditor: React.FC<InstrumentEditorProps> = ({
     }
 
     onClose();
-  };
-
-  const handleSyncCycleOrder = () => {
-    const availableChars = notes.map(n => n.character).filter(c => c.length > 0);
-    setCycleOrder(availableChars);
   };
 
   if (!isOpen) return null;
@@ -320,80 +382,86 @@ export const InstrumentEditor: React.FC<InstrumentEditorProps> = ({
 
             <div className="space-y-2">
               {notes.map((note, index) => (
-                <div key={index} className="flex gap-2 items-start p-3 bg-zinc-800 rounded border border-zinc-700">
-                  <div className="flex-1 grid grid-cols-4 gap-2">
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Character</label>
-                      <input
-                        type="text"
-                        maxLength={1}
-                        value={note.character}
-                        onChange={(e) => handleNoteChange(index, 'character', e.target.value)}
-                        className="w-full px-2 py-1 bg-zinc-700 text-zinc-100 border border-zinc-600 rounded text-center text-lg font-mono"
-                        placeholder="X"
-                      />
+                <div
+                  key={index}
+                  draggable
+                  onDragStart={() => handleNoteDragStart(index)}
+                  onDragOver={handleNoteDragOver}
+                  onDrop={(e) => handleNoteDrop(e, index)}
+                  onDragEnd={handleNoteDragEnd}
+                  className={`flex gap-2 items-start p-3 bg-zinc-800 rounded border border-zinc-700 cursor-move ${
+                    draggedNoteIndex === index ? 'opacity-50' : ''
+                  }`}
+                >
+                  <div className="flex-1">
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      <div>
+                        <label className="block text-xs text-zinc-500 mb-1">Character</label>
+                        <input
+                          type="text"
+                          maxLength={1}
+                          value={note.character}
+                          onChange={(e) => handleNoteChange(index, 'character', e.target.value)}
+                          className="w-full px-2 py-1 bg-zinc-700 text-zinc-100 border border-zinc-600 rounded text-sm font-mono"
+                          placeholder="X"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-500 mb-1">Label</label>
+                        <input
+                          type="text"
+                          value={note.label}
+                          onChange={(e) => handleNoteChange(index, 'label', e.target.value)}
+                          className="w-full px-2 py-1 bg-zinc-700 text-zinc-100 border border-zinc-600 rounded text-sm"
+                          placeholder="Name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-500 mb-1">Color</label>
+                        <select
+                          value={note.color}
+                          onChange={(e) => handleNoteChange(index, 'color', e.target.value)}
+                          className="w-full px-2 py-1 bg-zinc-700 text-zinc-100 border border-zinc-600 rounded text-sm"
+                        >
+                          {COMMON_NOTE_COLORS.map(color => (
+                            <option key={color.value} value={color.value}>
+                              {color.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Label</label>
+                      <label className="block text-xs text-zinc-500 mb-1">Description</label>
                       <input
                         type="text"
-                        value={note.label}
-                        onChange={(e) => handleNoteChange(index, 'label', e.target.value)}
-                        className="w-full px-2 py-1 bg-zinc-700 text-zinc-100 border border-zinc-600 rounded text-sm"
-                        placeholder="Name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Color</label>
-                      <select
-                        value={note.color}
-                        onChange={(e) => handleNoteChange(index, 'color', e.target.value)}
-                        className="w-full px-2 py-1 bg-zinc-700 text-zinc-100 border border-zinc-600 rounded text-sm"
-                      >
-                        {COMMON_NOTE_COLORS.map(color => (
-                          <option key={color.value} value={color.value}>
-                            {color.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Symbol (opt)</label>
-                      <input
-                        type="text"
-                        maxLength={3}
-                        value={note.symbol || ''}
-                        onChange={(e) => handleNoteChange(index, 'symbol', e.target.value)}
-                        className="w-full px-2 py-1 bg-zinc-700 text-zinc-100 border border-zinc-600 rounded text-sm"
-                        placeholder={note.character}
+                        value={note.description || ''}
+                        onChange={(e) => handleNoteChange(index, 'description', e.target.value)}
+                        className="w-full px-2 py-1 bg-zinc-700 text-zinc-100 border border-zinc-600 rounded text-xs"
+                        placeholder="Describe what this character represents (e.g., Bass stroke, Open tone)"
                       />
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleRemoveNote(index)}
-                    className="mt-6 px-2 py-1 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded"
-                    title="Remove note"
-                  >
-                    ✕
-                  </button>
+                  <div className="flex flex-col gap-1 mt-5">
+                    <span className="text-zinc-500 text-xs cursor-grab" title="Drag to reorder">⋮⋮</span>
+                    <button
+                      onClick={() => handleRemoveNote(index)}
+                      className="px-2 py-1 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded"
+                      title="Remove note"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Cycle Order */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-700 pb-2">
-              <h3 className="text-sm font-semibold text-zinc-300">Cycle Order</h3>
-              <button
-                onClick={handleSyncCycleOrder}
-                className="px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded"
-              >
-                Auto-sync with notes
-              </button>
-            </div>
-            <p className="text-xs text-zinc-500">
-              Order in which notes cycle when clicking. Current: {cycleOrder.join(' → ')}
+          {/* Cycle Order Info */}
+          <div className="bg-blue-900/20 border border-blue-700 rounded p-4">
+            <p className="text-sm text-blue-200">
+              <strong>Note Order = Cycle Order:</strong> Drag notes above to reorder them. The order of notes determines
+              the cycle order when clicking notes in the editor. Current cycle: {notes.map(n => n.character).filter(c => c.length > 0).join(' → ')}
             </p>
           </div>
 

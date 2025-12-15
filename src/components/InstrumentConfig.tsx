@@ -3,12 +3,13 @@
  * Allows users to view, add, edit, delete, and import/export instruments
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../store';
 import { removeInstrument, importInstrument, reorderInstruments, resetToDefaults } from '../store/instrumentsSlice';
 import { InstrumentConfig } from '../types';
 import { exportInstrument, importInstrumentFromJSON } from '../store/instrumentPersistence';
 import { isInstrumentUsedInSongs, findSongsUsingInstrument } from '../utils/instrumentValidation';
+import { DEFAULT_INSTRUMENTS } from '../assets/defaultInstruments';
 
 interface InstrumentConfigProps {
   onEditInstrument: (config: InstrumentConfig) => void;
@@ -28,6 +29,31 @@ export const InstrumentConfigComponent: React.FC<InstrumentConfigProps> = ({
 
   // Sort instruments by displayOrder
   const sortedInstruments = [...instruments].sort((a, b) => a.displayOrder - b.displayOrder);
+
+  // Check if current instruments match defaults (ignoring modified/created dates)
+  const instrumentsMatchDefaults = useMemo(() => {
+    if (instruments.length !== DEFAULT_INSTRUMENTS.length) return false;
+
+    // Check each default instrument
+    return DEFAULT_INSTRUMENTS.every(defaultInst => {
+      const currentInst = instruments.find(i => i.key === defaultInst.key);
+      if (!currentInst) return false;
+
+      // Compare all fields except created and modified
+      return (
+        currentInst.name === defaultInst.name &&
+        currentInst.description === defaultInst.description &&
+        currentInst.color === defaultInst.color &&
+        currentInst.displayOrder === defaultInst.displayOrder &&
+        JSON.stringify(currentInst.availableNotes) === JSON.stringify(defaultInst.availableNotes) &&
+        JSON.stringify(currentInst.cycleOrder) === JSON.stringify(defaultInst.cycleOrder) &&
+        JSON.stringify(currentInst.noteLabels) === JSON.stringify(defaultInst.noteLabels) &&
+        JSON.stringify(currentInst.noteColors) === JSON.stringify(defaultInst.noteColors) &&
+        JSON.stringify(currentInst.noteSymbols) === JSON.stringify(defaultInst.noteSymbols) &&
+        JSON.stringify(currentInst.flamNotes) === JSON.stringify(defaultInst.flamNotes)
+      );
+    });
+  }, [instruments]);
 
   const handleExport = (config: InstrumentConfig) => {
     const json = exportInstrument(config);
@@ -160,8 +186,13 @@ export const InstrumentConfigComponent: React.FC<InstrumentConfigProps> = ({
         <div className="flex gap-2">
           <button
             onClick={handleResetToDefaults}
-            className="px-3 py-1.5 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-700 rounded"
-            title="Reset all instruments to factory defaults"
+            disabled={instrumentsMatchDefaults}
+            className={`px-3 py-1.5 text-xs rounded ${
+              instrumentsMatchDefaults
+                ? 'bg-zinc-700 text-zinc-500 border border-zinc-600 cursor-not-allowed'
+                : 'bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-700'
+            }`}
+            title={instrumentsMatchDefaults ? 'Instruments already match defaults' : 'Reset all instruments to factory defaults'}
           >
             Reset to Defaults
           </button>

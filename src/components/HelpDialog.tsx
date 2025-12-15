@@ -6,6 +6,7 @@ import { InstrumentConfig } from '../types';
 import { useAppSelector, useAppDispatch } from '../store';
 import { setInstrumentFocus } from '../store/preferencesSlice';
 import { applyFocusFilterToSongs } from '../store/songsSlice';
+import { APP_VERSION } from '../config/schemaVersions';
 
 interface HelpDialogProps {
   isOpen: boolean;
@@ -19,8 +20,6 @@ interface HelpSection {
 }
 
 type Tab = 'help' | 'settings';
-
-const APP_VERSION = '2.2.0'; // Should match the version in persistence.ts
 
 const helpSections: HelpSection[] = [
   {
@@ -384,6 +383,44 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
       // Reset to first tab and section when dialog opens
       setActiveTab('help');
       setActiveSection('getting-started');
+
+      // Prevent body scroll when dialog is open (iOS-friendly approach)
+      const scrollY = window.scrollY;
+      const html = document.documentElement;
+      const body = document.body;
+
+      // Store original styles
+      const originalHtmlOverflow = html.style.overflow;
+      const originalBodyOverflow = body.style.overflow;
+      const originalBodyPosition = body.style.position;
+      const originalBodyTop = body.style.top;
+      const originalBodyWidth = body.style.width;
+      const originalBodyHeight = body.style.height;
+
+      // Lock scroll on both html and body
+      html.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
+      body.style.position = 'fixed';
+      body.style.top = `-${scrollY}px`;
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.width = '100%';
+      body.style.height = '100%';
+
+      return () => {
+        // Restore original styles
+        html.style.overflow = originalHtmlOverflow;
+        body.style.overflow = originalBodyOverflow;
+        body.style.position = originalBodyPosition;
+        body.style.top = originalBodyTop;
+        body.style.width = originalBodyWidth;
+        body.style.height = originalBodyHeight;
+        body.style.left = '';
+        body.style.right = '';
+
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
+      };
     }
   }, [isOpen]);
 
@@ -459,8 +496,17 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4">
-      <div className="relative w-full h-full max-w-6xl max-h-screen bg-zinc-900 sm:rounded-lg shadow-2xl flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4"
+      style={{ touchAction: 'none' }}
+      onTouchMove={(e) => {
+        // Prevent background scroll on touch devices
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <div className="relative w-full h-full max-w-6xl max-h-screen bg-zinc-900 sm:rounded-lg shadow-2xl flex flex-col" style={{ touchAction: 'auto' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-700">
           <h2 className="text-lg sm:text-2xl font-bold text-zinc-100">
@@ -505,7 +551,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
           {activeTab === 'help' ? (
             <>
               {/* Left Navigation - Hidden on mobile */}
-              <nav className="hidden sm:block w-64 border-r border-zinc-700 overflow-y-auto">
+              <nav className="hidden sm:block w-64 border-r border-zinc-700 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <ul className="py-4">
                   {helpSections.map((section) => (
                     <li key={section.id}>
@@ -525,7 +571,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
               </nav>
 
               {/* Main Content */}
-              <div ref={contentRef} className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
+              <div ref={contentRef} className="flex-1 overflow-y-auto px-4 sm:px-8 py-6" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <div className="max-w-3xl space-y-12">
                   {helpSections.map((section) => (
                     <div
@@ -544,7 +590,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ isOpen, onClose }) => {
             </>
           ) : (
             /* Settings Tab */
-            <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6" style={{ WebkitOverflowScrolling: 'touch' }}>
               <div className="max-w-4xl space-y-8">
                 {/* Instrument Configuration */}
                 <div>

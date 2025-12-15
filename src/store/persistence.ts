@@ -5,7 +5,6 @@ import yankadiSong from '../assets/songs/yankadi.json';
 import soliSong from '../assets/songs/soli.json';
 import kukuSong from '../assets/songs/kuku.json';
 import tiribaSong from '../assets/songs/tiriba.json';
-import kassaMultiCycleSong from '../assets/songs/kassa-multi-cycle.json';
 import { SongsState } from './songsSlice';
 import { Song, LegacySongData } from '../types';
 import { validateSong, isLegacyFormat, migrateLegacySongs, migrateAllToMultiCycle } from '../migration';
@@ -159,8 +158,7 @@ export function loadDefaultSongs(): Song[] {
       yankadiSong,
       soliSong,
       kukuSong,
-      tiribaSong,
-      kassaMultiCycleSong
+      tiribaSong
     ] as any[];
 
     // Check if default songs are in legacy format

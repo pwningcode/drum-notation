@@ -143,6 +143,9 @@ export const SongManagement: React.FC = () => {
   const modifiedCount = songComparison.filter(s => s.status === 'modified').length;
   const customCount = songComparison.filter(s => s.status === 'custom').length;
 
+  // Check if there's anything to reset (no custom or modified songs)
+  const songsMatchDefaults = modifiedCount === 0 && customCount === 0 && upToDateCount === defaultSongs.length;
+
   const handleResetToDefaults = () => {
     const confirmed = window.confirm(
       'Are you sure you want to reset all songs to their default configurations?\n\n' +
@@ -204,8 +207,13 @@ export const SongManagement: React.FC = () => {
         </button>
         <button
           onClick={handleResetToDefaults}
-          className="px-3 py-1.5 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-700 rounded"
-          title="Reset all songs to factory defaults"
+          disabled={songsMatchDefaults}
+          className={`px-3 py-1.5 text-xs rounded ${
+            songsMatchDefaults
+              ? 'bg-zinc-700 text-zinc-500 border border-zinc-600 cursor-not-allowed'
+              : 'bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-700'
+          }`}
+          title={songsMatchDefaults ? 'Songs already match defaults' : 'Reset all songs to factory defaults'}
         >
           Reset to Defaults
         </button>

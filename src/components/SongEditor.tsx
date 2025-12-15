@@ -672,7 +672,7 @@ const InstrumentTrackView: React.FC<InstrumentTrackViewProps> = ({
                 }`}
                 title={isCycleEditingEnabled ? "Cycle Mode: Edits apply to all cycles" : "Individual Mode: Edit each note separately"}
               >
-                {isCycleEditingEnabled ? '🔁' : '1️⃣'}
+                {isCycleEditingEnabled ? 'Edit Cycle' : 'Edit Each'}
               </button>
             )}
             {editable && canRemove && (
@@ -1746,16 +1746,17 @@ export const SongEditor: React.FC<SongEditorProps> = ({ song, isEditing }) => {
             </div>
           ) : (
             <>
-              {song.description && !isEditing ? (
+              {song.description ? (
                 <p className="text-xs sm:text-sm text-zinc-400 mt-2">{song.description}</p>
-              ) : isEditing ? (
+              ) : null}
+              {isEditing && (
                 <button
                   onClick={() => setIsEditingDescription(true)}
                   className="mt-2 text-[10px] sm:text-xs text-zinc-500 hover:text-zinc-400 px-1.5 sm:px-2 py-0.5 sm:py-1 border border-dashed border-zinc-600 rounded"
                 >
                   {song.description ? 'Edit description' : '+ Add description or lyrics'}
                 </button>
-              ) : null}
+              )}
             </>
           )}
 

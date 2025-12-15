@@ -98,6 +98,7 @@ export const App = () => {
   const handleDeleteSong = () => {
     if (activeSong && confirm(`Delete "${activeSong.title}"? This cannot be undone.`)) {
       dispatch(removeSong(activeSong.id))
+      setIsEditing(false)
     }
   }
 

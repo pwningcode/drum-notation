@@ -58,7 +58,7 @@ export const DEFAULT_INSTRUMENTS: InstrumentConfig[] = [
     noteSymbols: {
       '.': '·'
     },
-    flamNotes: [],
+    flamNotes: ['O', 'M'], // All notes except rest can be used in flams
     created: DEFAULT_DATE,
     modified: DEFAULT_DATE
   },
@@ -83,11 +83,11 @@ export const DEFAULT_INSTRUMENTS: InstrumentConfig[] = [
     noteSymbols: {
       '.': '·'
     },
-    flamNotes: [], // Dundun instruments typically don't use flams
+    flamNotes: ['O', 'M'], // All notes except rest can be used in flams
     created: DEFAULT_DATE,
     modified: DEFAULT_DATE
   },
-  
+
   {
     key: 'dundunba',
     name: 'Dundunba',
@@ -109,7 +109,7 @@ export const DEFAULT_INSTRUMENTS: InstrumentConfig[] = [
     noteSymbols: {
       '.': '·'
     },
-    flamNotes: [],
+    flamNotes: ['O', 'M'], // All notes except rest can be used in flams
     created: DEFAULT_DATE,
     modified: DEFAULT_DATE
   },
@@ -134,7 +134,7 @@ export const DEFAULT_INSTRUMENTS: InstrumentConfig[] = [
     noteSymbols: {
       '.': '·'
     },
-    flamNotes: [],
+    flamNotes: ['O', 'M'], // All notes except rest can be used in flams
     created: DEFAULT_DATE,
     modified: DEFAULT_DATE
   }

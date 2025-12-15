@@ -14,8 +14,11 @@
  * - PATCH: Bug fixes, no schema changes
  */
 
-export const SONGS_SCHEMA_VERSION = '2.2.0';
+export const SONGS_SCHEMA_VERSION = '2.2.1';
 export const INSTRUMENTS_SCHEMA_VERSION = '1.0.0';
+
+// App version - should match package.json
+export const APP_VERSION = '2.2.1';
 
 /**
  * Minimum supported versions - data below these versions will be reset to defaults
@@ -69,6 +72,7 @@ export function meetsMinimumVersion(version: string, minVersion: string): boolea
  * Change History:
  *
  * SONGS:
+ * - 2.2.1: Removed kassa-multi-cycle from default songs; Updated default instruments to enable flams for all notes except rest
  * - 2.2.0: Added visible (optional) field to InstrumentTrack for track visibility
  * - 2.1.0: Added displayOrder (optional) and links (optional) fields
  * - 2.0.0: Migrated from legacy format
